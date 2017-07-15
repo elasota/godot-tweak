@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -243,6 +244,13 @@ PhysicsServer::BodyMode BodySW::get_mode() const {
 void BodySW::_shapes_changed() {
 
 	_update_inertia();
+}
+
+void BodySW::_shape_index_removed(int p_index) {
+
+	for (Map<ConstraintSW *, int>::Element *E = constraint_map.front(); E; E = E->next()) {
+		E->key()->shift_shape_indices(this, p_index);
+	}
 }
 
 void BodySW::set_state(PhysicsServer::BodyState p_state, const Variant &p_variant) {
@@ -714,6 +722,8 @@ BodySW::BodySW()
 	contact_count = 0;
 	gravity_scale = 1.0;
 
+	linear_damp = -1;
+	angular_damp = -1;
 	area_angular_damp = 0;
 	area_linear_damp = 0;
 

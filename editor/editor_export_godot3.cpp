@@ -1,8 +1,183 @@
+/*************************************************************************/
+/*  editor_export_godot3.cpp                                             */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                    http://www.godotengine.org                         */
+/*************************************************************************/
+/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
 #include "editor_export_godot3.h"
+
 #include "editor_node.h"
 #include "io/resource_format_binary.h"
 #include "io/resource_format_xml.h"
 #include "scene/resources/scene_format_text.h"
+
+static const char *globals_renames[][2] = {
+	/* [application] */
+	// no change
+
+	/* [debug] */
+	{ "debug/profiler_max_functions", "debug/profiler/max_functions" },
+	{ "debug/max_remote_stdout_chars_per_second", "network/debug/max_remote_stdout_chars_per_second" },
+	{ "debug/force_fps", "debug/fps/force_fps" },
+	{ "debug/verbose_stdout", "debug/stdout/verbose_stdout" },
+	//{ "debug/max_texture_size", "debug/" },
+	//{ "debug/max_texture_size_alert", "debug/" },
+	//{ "debug/image_load_times", "debug/" },
+	{ "debug/script_max_call_stack", "debug/script/max_call_stack" },
+	{ "debug/collision_shape_color", "debug/collision/shape_color" },
+	{ "debug/collision_contact_color", "debug/collision/contact_color" },
+	{ "debug/navigation_geometry_color", "debug/navigation/geometry_color" },
+	{ "debug/navigation_disabled_geometry_color", "debug/navigation/disabled_geometry_color" },
+	{ "debug/collision_max_contacts_displayed", "debug/collision/max_contacts_displayed" },
+	//{ "debug/indicators_enabled", "debug/" },
+	{ "debug/print_fps", "debug/stdout/print_fps" },
+	//{ "debug/print_metrics", "debug/" },
+
+	/* [display] */
+	{ "display/driver", "display/driver/name" },
+	{ "display/width", "display/window/width" },
+	{ "display/height", "display/window/height" },
+	{ "display/allow_hidpi", "display/window/allow_hidpi" },
+	{ "display/fullscreen", "display/window/fullscreen" },
+	{ "display/resizable", "display/window/resizable" },
+	{ "display/borderless_window", "display/window/borderless" },
+	{ "display/use_vsync", "display/window/use_vsync" },
+	{ "display/test_width", "display/window/test_width" },
+	{ "display/test_height", "display/window/test_height" },
+	{ "display/use_2d_pixel_snap", "rendering/2d/use_pixel_snap" },
+	{ "display/keep_screen_on", "display/energy_saving/keep_screen_on" },
+	{ "display/orientation", "display/handheld/orientation" },
+	{ "display/emulate_touchscreen", "display/handheld/emulate_touchscreen" },
+	{ "display/use_hidpi_theme", "gui/theme/use_hidpi" },
+	{ "display/custom_theme", "gui/theme/custom" },
+	{ "display/custom_theme_font", "gui/theme/custom_font" },
+	{ "display/swap_ok_cancel", "gui/common/swap_ok_cancel" },
+	{ "display/custom_mouse_cursor", "display/mouse_cursor/custom_image" },
+	{ "display/custom_mouse_cursor_hotspot", "display/mouse_cursor/custom_hotspot" },
+	{ "display/tooltip_delay", "gui/timers/tooltip_delay_sec" },
+	{ "display/text_edit_idle_detect_sec", "gui/timers/text_edit_idle_detect_sec" },
+	{ "display/stretch_mode", "display/stretch/mode" },
+	{ "display/stretch_aspect", "display/stretch/aspect" },
+
+	/* [render] */
+	{ "render/thread_model", "rendering/threads/thread_model" },
+	//{ "render/mipmap_policy", "" },
+	//{ "render/thread_textures_prealloc", "" },
+	//{ "render/shadows_enabled", "" },
+	//{ "render/aabb_random_points", "" },
+	{ "render/default_clear_color", "rendering/viewport/default_clear_color" },
+	//{ "render/room_cull_enabled", "" },
+	//{ "render/light_discard_enabled", "" },
+
+	/* [audio] */
+	// partly unchanged
+	//{ "audio/mixer_interp", "" },
+	//{ "audio/use_chorus_reverb", "" },
+	//{ "audio/stream_volume_scale", "" },
+	//{ "audio/fx_volume_scale", "" },
+	//{ "audio/event_voice_volume_scale", "" },
+	//{ "audio/stream_buffering_ms", "" },
+	//{ "audio/video_delay_compensation_ms", "" },
+	//{ "audio/mixer_latency", "" },
+
+	/* [physics] */
+	{ "physics/fixed_fps", "physics/common/fixed_fps" },
+	{ "physics/remove_collision_helpers_at_runtime", "physics/" },
+	{ "physics/sleep_threshold_linear", "physics/3d/sleep_threshold_linear" },
+	{ "physics/sleep_threshold_angular", "physics/3d/sleep_threshold_angular" },
+	{ "physics/time_before_sleep", "physics/3d/time_before_sleep" },
+	{ "physics/default_gravity", "physics/3d/default_gravity" },
+	{ "physics/default_gravity_vector", "physics/3d/default_gravity_vector" },
+	{ "physics/default_linear_damp", "physics/3d/default_linear_damp" },
+	{ "physics/default_angular_damp", "physics/3d/default_angular_damp" },
+	{ "physics/enable_object_picking", "physics/common/enable_object_picking" },
+
+	/* [core] */
+	//{ "core/message_queue_size_kb", "" },
+	//{ "core/rid_pool_prealloc", "" },
+	//{ "core/thread_rid_pool_prealloc", "" },
+	{ "core/packet_stream_peer_max_buffer_po2", "network/packets/packet_stream_peer_max_buffer_po2" },
+
+	/* [rasterizer.Android] */
+	//{ "rasterizer.Android/use_fragment_lighting", "" },
+	//{ "rasterizer.Android/fp16_framebuffer", "" },
+
+	/* [display.Android] */
+	//{ "display.Android/driver", "" },
+
+	/* [rasterizer.iOS] */
+	//{ "rasterizer.iOS/use_fragment_lighting", "" },
+	//{ "rasterizer.iOS/fp16_framebuffer", "" },
+
+	/* [display.iOS] */
+	//{ "display.iOS/driver", "" },
+	//{ "display.iOS/use_cadisplaylink", "" },
+
+	/* [rasterizer] */
+	// most don't have an equivalent or are not meaningful to port
+	{ "rasterizer/anisotropic_filter_level", "rendering/quality/anisotropic_filter_level" },
+
+	/* [physics_2d] */
+	{ "physics_2d/thread_model", "physics/2d/thread_model" },
+	//{ "physics_2d/motion_fix_enabled", "" },
+	{ "physics_2d/sleep_threashold_linear", "physics/2d/sleep_threshold_linear" }, // FIXME: Typo in 2.1 and master, fix in master
+	{ "physics_2d/sleep_threshold_angular", "physics/2d/sleep_threshold_angular" },
+	{ "physics_2d/time_before_sleep", "physics/2d/time_before_sleep" },
+	{ "physics_2d/bp_hash_table_size", "physics/2d/bp_hash_table_size" },
+	{ "physics_2d/cell_size", "physics/2d/cell_size" },
+	{ "physics_2d/large_object_surface_treshold_in_cells", "physics/2d/large_object_surface_threshold_in_cells" }, // FIXME: Typo in 2.1 and master, fix in master
+	{ "physics_2d/default_gravity", "physics/2d/default_gravity" },
+	{ "physics_2d/default_gravity_vector", "physics/2d/default_gravity" },
+	{ "physics_2d/default_linear_damp", "physics/2d/default_linear_damp" },
+	{ "physics_2d/default_angular_damp", "physics/2d/default_angular_damp" },
+
+	/* [image_loader] */
+	//{ "image_loader/filter", "" },
+	//{ "image_loader/gen_mipmaps", "" },
+	//{ "image_loader/repeat", "" },
+
+	/* [ssl] */
+	{ "ssl/certificates", "network/ssl/certificates" },
+	{ "ssl/config", "network/ssl/config" },
+
+	/* [locale] */
+	// no change
+
+	/* [global] */
+	{ "editor_active", "editor/active" },
+
+	/* [editor] */
+	{ "editor/main_run_args", "editor/main_run_args" },
+	//{ "editor/import_shared_textures", "" },
+
+	/* [gui] */
+	{ "gui/incr_search_max_interval_msec", "gui/timers/incremental_search_max_interval_msec" },
+
+	{ NULL, NULL }
+};
 
 static const char *prop_renames[][2] = {
 	{ "script/script", "script" },
@@ -59,7 +234,7 @@ static const char *prop_renames[][2] = {
 	{ "shadow/filter", "shadow_filter" },
 	{ "shadow/item_cull_mask", "shadow_item_cull_mask" },
 	{ "transform/pos", "position" },
-	{ "transform/rot", "rotation" },
+	{ "transform/rot", "rotation_deg" },
 	{ "transform/scale", "scale" },
 	{ "z/z", "z" },
 	{ "z/relative", "z_as_relative" },
@@ -144,8 +319,8 @@ static const char *prop_renames[][2] = {
 	{ "quad/offset", "offset" },
 	{ "quad/centered", "centered" },
 	{ "transform/local", "transform" },
-	{ "transform/transiation", "translation" },
-	{ "transform/rotation", "rotation" },
+	{ "transform/translation", "translation" },
+	{ "transform/rotation", "rotation_deg" },
 	{ "transform/scale", "scale" },
 	{ "visibility/visible", "visible" },
 	{ "params/volume_db", "volume_db" },
@@ -263,7 +438,7 @@ static const char *prop_renames[][2] = {
 	{ "texture/under", "texture_under" },
 	{ "texture/over", "texture_over" },
 	{ "texture/progress", "texture_progress" },
-	{ "mode", "fill_mode" },
+//	{ "mode", "fill_mode" }, breaks tilemap :\
 	{ "radial_fill/initial_angle", "radial_initial_angle" },
 	{ "radial_fill/fill_degrees", "radial_fill_degrees" },
 	{ "radial_fill/center_offset", "radial_center_offset" },
@@ -315,7 +490,10 @@ static const char *type_renames[][2] = {
 	{ "Particles2D", "Node2D" },
 	{ "SampleLibrary", "Resource" },
 	{ "TextureFrame", "TextureRect" },
-	{ "FixedMaterial", "FixedSpatialMaterial" },
+	{ "FixedMaterial", "SpatialMaterial" },
+	{ "ColorRamp", "Gradient" },
+	{"CanvasItemShader","Shader"},
+	{"CanvasItemMaterial","ShaderMaterial"},
 	{ NULL, NULL }
 };
 
@@ -356,6 +534,14 @@ void EditorExportGodot3::_rename_properties(const String &p_type, List<ExportDat
 
 		if (prop_rename_map.has(E->get().name)) {
 			E->get().name = prop_rename_map[E->get().name];
+		}
+
+		/* Hardcoded fixups for properties that changed definition in 3.0 */
+
+		// 2D rotations are now clockwise to match the downward Y base
+		// TODO: Make sure this doesn't break 3D rotations
+		if (E->get().name == "rotation_deg") {
+			E->get().value = E->get().value.operator real_t() * -1.0;
 		}
 	}
 }
@@ -693,12 +879,13 @@ Error EditorExportGodot3::_get_property_as_text(const Variant &p_variant, String
 
 			String str = p_variant;
 			if (str.begins_with("@RESLOCAL:")) {
-				p_string += "SubResource(" + str.get_slice(":", 1) + ")";
+				p_string += "SubResource( " + str.get_slice(":", 1) + " )";
 			} else if (str.begins_with("@RESEXTERNAL:")) {
-				p_string += "ExtResource(" + str.get_slice(":", 1) + ")";
+				p_string += "ExtResource( " + str.get_slice(":", 1) + " )";
 			} else {
 
-				str = "\"" + str.c_escape_multiline() + "\"";
+				// Call _replace_resource in case it's a path to a scene/resource
+				str = "\"" + _replace_resource(str).c_escape_multiline() + "\"";
 				p_string += (str);
 			}
 
@@ -833,6 +1020,16 @@ Error EditorExportGodot3::_get_property_as_text(const Variant &p_variant, String
 		case Variant::NODE_PATH: {
 
 			String str = p_variant;
+			// In animation tracks, NodePaths can refer to properties that need to be renamed
+			int sep = str.find(":");
+			if (sep != -1) {
+				String path = str.substr(0, sep);
+				String prop = str.substr(sep + 1, str.length());
+				if (prop_rename_map.has(prop)) {
+					prop = prop_rename_map[prop];
+				}
+				str = path + ":" + prop;
+			}
 
 			str = "NodePath(\"" + str.c_escape() + "\")";
 			p_string += (str);
@@ -1078,7 +1275,7 @@ void EditorExportGodot3::_save_text(const String &p_path, ExportData &resource) 
 
 	for (Map<int, ExportData::Dependency>::Element *E = resource.dependencies.front(); E; E = E->next()) {
 
-		f->store_line("[ext_resource type=\"" + E->get().type + "\" path=\"" + E->get().path + "\" id=" + itos(E->key()) + "]\n");
+		f->store_line("[ext_resource path=\"" + E->get().path + "\" type=\"" + E->get().type + "\" id=" + itos(E->key()) + "]");
 	}
 
 	for (int i = 0; i < resource.resources.size(); i++) {
@@ -1094,20 +1291,16 @@ void EditorExportGodot3::_save_text(const String &p_path, ExportData &resource) 
 
 			String prop;
 			_get_property_as_text(E->get().value, prop);
-			f->store_line(E->get().name + "=" + prop);
+			f->store_line(E->get().name + " = " + prop);
 		}
 	}
 
 	for (int i = 0; i < resource.nodes.size(); i++) {
 
-		String node_txt = "\n[node ";
+		String node_txt = "\n[node";
 
 		if (resource.nodes[i].name != String()) {
 			node_txt += " name=\"" + String(resource.nodes[i].name).c_escape() + "\"";
-		}
-
-		if (resource.nodes[i].parent != NodePath()) {
-			node_txt += " parent=\"" + String(resource.nodes[i].parent).c_escape() + "\"";
 		}
 
 		if (resource.nodes[i].owner != NodePath()) {
@@ -1116,6 +1309,10 @@ void EditorExportGodot3::_save_text(const String &p_path, ExportData &resource) 
 
 		if (resource.nodes[i].type != String()) {
 			node_txt += " type=\"" + resource.nodes[i].type + "\"";
+		}
+
+		if (resource.nodes[i].parent != NodePath()) {
+			node_txt += " parent=\"" + String(resource.nodes[i].parent).c_escape() + "\"";
 		}
 
 		if (resource.nodes[i].instance != String()) {
@@ -1131,7 +1328,7 @@ void EditorExportGodot3::_save_text(const String &p_path, ExportData &resource) 
 
 			String prop;
 			_get_property_as_text(E->get().value, prop);
-			f->store_line(E->get().name + "=" + prop);
+			f->store_line(E->get().name + " = " + prop);
 		}
 	}
 
@@ -1511,8 +1708,8 @@ void EditorExportGodot3::_save_binary_property(const Variant &p_property, FileAc
 		case Variant::INPUT_EVENT: {
 
 			f->store_32(VARIANT_INPUT_EVENT);
-			InputEvent event = p_property;
-			f->store_32(0); //event type none, nothing else suported for now.
+			//InputEvent event = p_property;
+			f->store_32(0); //event type none, nothing else supported for now.
 
 		} break;
 		case Variant::DICTIONARY: {
@@ -1714,29 +1911,56 @@ void EditorExportGodot3::_save_binary(const String &p_path, ExportData &resource
 
 void EditorExportGodot3::_save_config(const String &p_path) {
 
-	FileAccessRef f = FileAccess::open(p_path.plus_file("godot.cfg"), FileAccess::WRITE);
-
-	f->store_line("[application]\n");
-	String name = Globals::get_singleton()->get("application/name");
-	f->store_line("name=\"" + name.c_escape() + "\"");
-	String main_scene = Globals::get_singleton()->get("application/main_scene");
-	f->store_line("main_scene=\"" + _replace_resource(main_scene).c_escape() + "\"");
+	// Parse existing config, convert persisting properties and store in ConfigFile
+	ConfigFile new_cfg = ConfigFile();
 
 	List<PropertyInfo> props;
 	Globals::get_singleton()->get_property_list(&props);
 
-	f->store_line("[input]\n");
-
 	for (List<PropertyInfo>::Element *E = props.front(); E; E = E->next()) {
 
-		if (!E->get().name.begins_with("input/"))
+		if (!Globals::get_singleton()->has(E->get().name))
 			continue;
 
-		String prop;
-		_get_property_as_text(Globals::get_singleton()->get(E->get().name), prop);
-		String what = E->get().name.get_slice("/", 1);
-		f->store_line(what + "=" + prop);
+		if (Globals::get_singleton()->is_persisting(E->get().name)) {
+			String newname;
+			if (globals_rename_map.has(E->get().name)) {
+				newname = globals_rename_map[E->get().name];
+			} else {
+				newname = E->get().name;
+			}
+
+			int sep = newname.find("/");
+			String section = newname.substr(0, sep);
+			String subname = newname.substr(sep + 1, newname.length());
+			String value;
+			_get_property_as_text(Globals::get_singleton()->get(E->get().name), value);
+			new_cfg.set_value(section, subname, value);
+		}
 	}
+
+	// Write the collected ConfigFile manually - we need to use _get_property_as_text()
+	// above, so we can't rely on ConfigFile.save() to properly store the raw strings.
+	FileAccessRef f = FileAccess::open(p_path.plus_file("project.godot"), FileAccess::WRITE);
+
+	List<String> sections;
+	new_cfg.get_sections(&sections);
+
+	for (List<String>::Element *E = sections.front(); E; E = E->next()) {
+
+		f->store_line("[" + E->get() + "]\n");
+
+		List<String> keys;
+		new_cfg.get_section_keys(E->get(), &keys);
+
+		for (List<String>::Element *F = keys.front(); F; F = F->next()) {
+
+			f->store_line(F->get() + " = " + new_cfg.get_value(E->get(), F->get()));
+		}
+		f->store_line("");
+	}
+
+	f->close();
 }
 
 Error EditorExportGodot3::export_godot3(const String &p_path) {
@@ -1781,11 +2005,14 @@ Error EditorExportGodot3::export_godot3(const String &p_path) {
 	for (List<String>::Element *E = files.front(); E; E = E->next()) {
 
 		String file = E->get();
+		String file_local = file.replace("res://", "");
 		if (xml_extensions.has(file.extension().to_lower())) {
 			if (ResourceLoader::get_resource_type(file) == "PackedScene") {
 				resource_replace_map[file] = file.basename() + ".tscn";
+				resource_replace_map[file_local] = file_local.basename() + ".tscn";
 			} else {
 				resource_replace_map[file] = file.basename() + ".tres";
+				resource_replace_map[file_local] = file_local.basename() + ".tres";
 			}
 		}
 	}
@@ -1882,6 +2109,13 @@ Error EditorExportGodot3::export_godot3(const String &p_path) {
 EditorExportGodot3::EditorExportGodot3() {
 
 	int idx = 0;
+	while (globals_renames[idx][0] != NULL) {
+
+		globals_rename_map[globals_renames[idx][0]] = globals_renames[idx][1];
+		idx++;
+	}
+
+	idx = 0;
 	while (prop_renames[idx][0] != NULL) {
 
 		prop_rename_map[prop_renames[idx][0]] = prop_renames[idx][1];
@@ -1889,7 +2123,6 @@ EditorExportGodot3::EditorExportGodot3() {
 	}
 
 	idx = 0;
-
 	while (type_renames[idx][0] != NULL) {
 
 		type_rename_map[type_renames[idx][0]] = type_renames[idx][1];
@@ -1897,7 +2130,6 @@ EditorExportGodot3::EditorExportGodot3() {
 	}
 
 	idx = 0;
-
 	while (signal_renames[idx][0] != NULL) {
 
 		signal_rename_map[signal_renames[idx][0]] = signal_renames[idx][1];

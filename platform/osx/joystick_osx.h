@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -95,13 +96,11 @@ private:
 	InputDefault *input;
 	IOHIDManagerRef hid_manager;
 
-	bool attached_devices[JOYSTICKS_MAX];
 	Vector<joystick> device_list;
 
 	bool have_device(IOHIDDeviceRef p_device) const;
 	bool configure_joystick(IOHIDDeviceRef p_device_ref, joystick *p_joy);
 
-	int get_free_joy_id();
 	int get_joy_index(int p_id) const;
 
 	void poll_joysticks() const;

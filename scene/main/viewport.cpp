@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -253,7 +254,8 @@ void Viewport::update_worlds() {
 	if (!is_inside_tree())
 		return;
 
-	Rect2 xformed_rect = (global_canvas_transform * canvas_transform).affine_inverse().xform(get_visible_rect());
+	Rect2 abstracted_rect = Rect2(Vector2(), get_visible_rect().size);
+	Rect2 xformed_rect = (global_canvas_transform * canvas_transform).affine_inverse().xform(abstracted_rect);
 	find_world_2d()->_update_viewport(this, xformed_rect);
 	find_world_2d()->_update();
 
@@ -696,7 +698,7 @@ void Viewport::_update_listener() {
 
 void Viewport::_update_listener_2d() {
 
-	if (is_inside_tree() && audio_listener && (!get_parent() || (get_parent()->cast_to<Control>() && get_parent()->cast_to<Control>()->is_visible())))
+	if (is_inside_tree() && audio_listener_2d && (!get_parent() || (get_parent()->cast_to<Control>() && get_parent()->cast_to<Control>()->is_visible())))
 		SpatialSound2DServer::get_singleton()->listener_set_space(internal_listener_2d, find_world_2d()->get_sound_space());
 	else
 		SpatialSound2DServer::get_singleton()->listener_set_space(internal_listener_2d, RID());
@@ -1347,7 +1349,7 @@ void Viewport::_vp_input(const InputEvent &p_ev) {
 		return;
 
 #ifdef TOOLS_ENABLED
-	if (get_tree()->is_editor_hint() && get_tree()->get_edited_scene_root()->is_a_parent_of(this)) {
+	if (get_tree()->is_editor_hint() && get_tree()->get_edited_scene_root() && get_tree()->get_edited_scene_root()->is_a_parent_of(this)) {
 		return;
 	}
 #endif
@@ -1371,7 +1373,7 @@ void Viewport::_vp_unhandled_input(const InputEvent &p_ev) {
 	if (disable_input)
 		return;
 #ifdef TOOLS_ENABLED
-	if (get_tree()->is_editor_hint() && get_tree()->get_edited_scene_root()->is_a_parent_of(this)) {
+	if (get_tree()->is_editor_hint() && get_tree()->get_edited_scene_root() && get_tree()->get_edited_scene_root()->is_a_parent_of(this)) {
 		return;
 	}
 #endif

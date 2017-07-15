@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -327,6 +328,10 @@ void SceneTree::input_text(const String &p_text) {
 	root_lock--;
 }
 
+bool SceneTree::is_input_handled() {
+	return input_handled;
+}
+
 void SceneTree::input_event(const InputEvent &p_event) {
 
 	if (is_editor_hint() && (p_event.type == InputEvent::JOYSTICK_MOTION || p_event.type == InputEvent::JOYSTICK_BUTTON))
@@ -455,7 +460,6 @@ void SceneTree::input_event(const InputEvent &p_event) {
 void SceneTree::init() {
 
 	//_quit=false;
-	accept_quit = true;
 	initialized = true;
 	input_handled = false;
 
@@ -583,24 +587,24 @@ void SceneTree::set_auto_accept_quit(bool p_enable) {
 	accept_quit = p_enable;
 }
 
+#ifdef TOOLS_ENABLED
 void SceneTree::set_editor_hint(bool p_enabled) {
 
 	editor_hint = p_enabled;
 }
 
 bool SceneTree::is_node_being_edited(const Node *p_node) const {
-#ifdef TOOLS_ENABLED
+
 	return editor_hint && edited_scene_root && edited_scene_root->is_a_parent_of(p_node);
-#else
-	return false;
-#endif
 }
 
 bool SceneTree::is_editor_hint() const {
 
 	return editor_hint;
 }
+#endif
 
+#ifdef DEBUG_ENABLED
 void SceneTree::set_debug_collisions_hint(bool p_enabled) {
 
 	debug_collisions_hint = p_enabled;
@@ -620,6 +624,7 @@ bool SceneTree::is_debugging_navigation_hint() const {
 
 	return debug_navigation_hint;
 }
+#endif
 
 void SceneTree::set_debug_collisions_color(const Color &p_color) {
 
@@ -1556,6 +1561,7 @@ void SceneTree::_bind_methods() {
 	ObjectTypeDB::bind_method(_MD("set_pause", "enable"), &SceneTree::set_pause);
 	ObjectTypeDB::bind_method(_MD("is_paused"), &SceneTree::is_paused);
 	ObjectTypeDB::bind_method(_MD("set_input_as_handled"), &SceneTree::set_input_as_handled);
+	ObjectTypeDB::bind_method(_MD("is_input_handled"), &SceneTree::is_input_handled);
 
 	ObjectTypeDB::bind_method(_MD("get_node_count"), &SceneTree::get_node_count);
 	ObjectTypeDB::bind_method(_MD("get_frame"), &SceneTree::get_frame);
@@ -1618,10 +1624,15 @@ SceneTree::SceneTree() {
 
 	singleton = this;
 	_quit = false;
+	accept_quit = true;
 	initialized = false;
+#ifdef TOOLS_ENABLED
 	editor_hint = false;
+#endif
+#ifdef DEBUG_ENABLED
 	debug_collisions_hint = false;
 	debug_navigation_hint = false;
+#endif
 	debug_collisions_color = GLOBAL_DEF("debug/collision_shape_color", Color(0.0, 0.6, 0.7, 0.5));
 	debug_collision_contact_color = GLOBAL_DEF("debug/collision_contact_color", Color(1.0, 0.2, 0.1, 0.8));
 	debug_navigation_color = GLOBAL_DEF("debug/navigation_geometry_color", Color(0.1, 1.0, 0.7, 0.4));

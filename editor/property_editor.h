@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -63,6 +64,7 @@ class CustomPropertyEditor : public Popup {
 		OBJ_MENU_COPY = 4,
 		OBJ_MENU_PASTE = 5,
 		OBJ_MENU_REIMPORT = 6,
+		OBJ_MENU_NEW_SCRIPT = 7,
 		TYPE_BASE_ID = 100
 
 	};
@@ -232,6 +234,9 @@ class PropertyEditor : public Control {
 	void drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from);
 
 	void _resource_preview_done(const String &p_path, const Ref<Texture> &p_preview, Variant p_ud);
+	void _draw_transparency(Object *t, const Rect2 &p_rect);
+
+	ObjectID _get_curent_remote_object_id(const StringName &p_name);
 
 	UndoRedo *undo_redo;
 
@@ -260,7 +265,8 @@ public:
 		custom_editor->set_read_only(p_read_only);
 	}
 
-	void set_capitalize_paths(bool p_capitalize);
+	bool is_capitalize_paths_enabled() const;
+	void set_enable_capitalize_paths(bool p_capitalize);
 	void set_autoclear(bool p_enable);
 
 	void set_show_categories(bool p_show);

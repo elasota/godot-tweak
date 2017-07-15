@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -62,12 +63,9 @@ int Vector3::max_axis() const {
 
 void Vector3::snap(float p_val) {
 
-	x += p_val / 2.0;
-	x -= Math::fmod(x, p_val);
-	y += p_val / 2.0;
-	y -= Math::fmod(y, p_val);
-	z += p_val / 2.0;
-	z -= Math::fmod(z, p_val);
+	x = Math::stepify(x, p_val);
+	y = Math::stepify(y, p_val);
+	z = Math::stepify(z, p_val);
 }
 Vector3 Vector3::snapped(float p_val) const {
 

@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -86,6 +87,8 @@ class BodyPair2DSW : public Constraint2DSW {
 public:
 	bool setup(float p_step);
 	void solve(float p_step);
+
+	virtual void shift_shape_indices(const CollisionObject2DSW *p_object, int p_removed_index);
 
 	BodyPair2DSW(Body2DSW *p_A, int p_shape_A, Body2DSW *p_B, int p_shape_B);
 	~BodyPair2DSW();

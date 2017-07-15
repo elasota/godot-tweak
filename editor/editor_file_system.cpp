@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -206,6 +207,7 @@ EditorFileSystemDirectory::EditorFileSystemDirectory() {
 
 	modified_time = 0;
 	parent = NULL;
+	verified = false;
 }
 
 EditorFileSystemDirectory::~EditorFileSystemDirectory() {
@@ -1037,7 +1039,10 @@ bool EditorFileSystem::_find_file(const String &p_file, EditorFileSystemDirector
 		if (idx == -1) {
 			//does not exist, create i guess?
 			EditorFileSystemDirectory *efsd = memnew(EditorFileSystemDirectory);
+
 			efsd->name = path[i];
+			efsd->parent = fs;
+
 			int idx2 = 0;
 			for (int j = 0; j < fs->get_subdir_count(); j++) {
 
@@ -1251,6 +1256,7 @@ EditorFileSystem::EditorFileSystem() {
 
 	singleton = this;
 	filesystem = memnew(EditorFileSystemDirectory); //like, empty
+	filesystem->parent = NULL;
 
 	thread = NULL;
 	scanning = false;
@@ -1258,7 +1264,9 @@ EditorFileSystem::EditorFileSystem() {
 	thread_sources = NULL;
 	new_filesystem = NULL;
 
+	abort_scan = false;
 	scanning_sources = false;
+	scanning_sources_done = false;
 	ResourceSaver::set_save_callback(_resource_saved);
 
 	List<String> extensionsl;

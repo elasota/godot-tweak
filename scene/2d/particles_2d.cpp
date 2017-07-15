@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -128,6 +129,8 @@ void ParticleAttractor2D::_bind_methods() {
 
 	ObjectTypeDB::bind_method(_MD("set_particles_path", "path"), &ParticleAttractor2D::set_particles_path);
 	ObjectTypeDB::bind_method(_MD("get_particles_path"), &ParticleAttractor2D::get_particles_path);
+
+	ObjectTypeDB::bind_method(_MD("_owner_exited"), &ParticleAttractor2D::_owner_exited);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), _SCS("set_enabled"), _SCS("is_enabled"));
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "radius", PROPERTY_HINT_RANGE, "0.1,16000,0.1"), _SCS("set_radius"), _SCS("get_radius"));
@@ -582,13 +585,13 @@ void Particles2D::_notification(int p_what) {
 						src_rect.pos.x = size.x * (frame % h_frames);
 						src_rect.pos.y = size.y * (frame / h_frames);
 					}
-
+					Rect2 dst_rect(Point2(), size);
 					if (flip_h)
-						src_rect.size.x = -src_rect.size.x;
+						dst_rect.size.x = -dst_rect.size.x;
 					if (flip_v)
-						src_rect.size.y = -src_rect.size.y;
+						dst_rect.size.y = -dst_rect.size.y;
 
-					texture->draw_rect_region(ci, Rect2(Point2(), size), src_rect, color);
+					texture->draw_rect_region(ci, dst_rect, src_rect, color);
 					//VisualServer::get_singleton()->canvas_item_add_texture_rect(ci,r,texrid,false,color);
 				} else {
 					VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(Point2(), size), color);
@@ -1064,7 +1067,7 @@ void Particles2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "config/amount", PROPERTY_HINT_EXP_RANGE, "1,1024"), _SCS("set_amount"), _SCS("get_amount"));
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "config/lifetime", PROPERTY_HINT_EXP_RANGE, "0.1,3600,0.1"), _SCS("set_lifetime"), _SCS("get_lifetime"));
 	ADD_PROPERTYNO(PropertyInfo(Variant::REAL, "config/time_scale", PROPERTY_HINT_EXP_RANGE, "0.01,128,0.01"), _SCS("set_time_scale"), _SCS("get_time_scale"));
-	ADD_PROPERTYNZ(PropertyInfo(Variant::REAL, "config/preprocess", PROPERTY_HINT_EXP_RANGE, "0.1,3600,0.1"), _SCS("set_pre_process_time"), _SCS("get_pre_process_time"));
+	ADD_PROPERTYNZ(PropertyInfo(Variant::REAL, "config/preprocess", PROPERTY_HINT_EXP_RANGE, "0,3600,0.1"), _SCS("set_pre_process_time"), _SCS("get_pre_process_time"));
 	ADD_PROPERTYNZ(PropertyInfo(Variant::REAL, "config/emit_timeout", PROPERTY_HINT_RANGE, "0,3600,0.1"), _SCS("set_emit_timeout"), _SCS("get_emit_timeout"));
 	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "config/emitting"), _SCS("set_emitting"), _SCS("is_emitting"));
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "config/process_mode", PROPERTY_HINT_ENUM, "Fixed,Idle"), _SCS("set_process_mode"), _SCS("get_process_mode"));

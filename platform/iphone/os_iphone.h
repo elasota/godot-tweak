@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -153,6 +154,11 @@ public:
 	void update_magnetometer(float p_x, float p_y, float p_z);
 	void update_gyroscope(float p_x, float p_y, float p_z);
 
+	int get_unused_joy_id();
+	void joy_connection_changed(int p_idx, bool p_connected, String p_name);
+	void joy_button(int p_device, int p_button, bool p_pressed);
+	void joy_axis(int p_device, int p_axis, const InputDefault::JoyAxis &p_value);
+
 	static OSIPhone *get_singleton();
 
 	virtual void set_mouse_show(bool p_show);
@@ -161,6 +167,8 @@ public:
 	virtual Point2 get_mouse_pos() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
+
+	virtual void alert(const String &p_alert, const String &p_title = "ALERT!");
 
 	virtual void set_video_mode(const VideoMode &p_video_mode, int p_screen = 0);
 	virtual VideoMode get_video_mode(int p_screen = 0) const;

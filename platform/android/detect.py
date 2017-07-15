@@ -168,15 +168,15 @@ def configure(env):
 
     env.Append(CPPFLAGS=["-isystem", sysroot + "/usr/include"])
     env.Append(CPPFLAGS=string.split(
-        '-Wno-invalid-command-line-argument -Wno-unused-command-line-argument'))
-    env.Append(CPPFLAGS=string.split(
-        '-fpic -ffunction-sections -funwind-tables -fstack-protector-strong -fvisibility=hidden -fno-strict-aliasing -Wa,--noexecstack'))
+        '-fpic -ffunction-sections -funwind-tables -fstack-protector-strong -fvisibility=hidden -fno-strict-aliasing'))
     env.Append(CPPFLAGS=string.split('-DANDROID -DNO_STATVFS -DGLES2_ENABLED'))
 
     env['neon_enabled'] = False
     if env['android_arch'] == 'x86':
         can_vectorize = True
         target_opts = ['-target', 'i686-none-linux-android']
+        # The NDK adds this if targeting API < 21, so we can drop it when Godot targets it at least
+        env.Append(CPPFLAGS=['-mstackrealign'])
     elif env["android_arch"] == "armv6":
         can_vectorize = False
         target_opts = ['-target', 'armv6-none-linux-androideabi']
@@ -232,7 +232,7 @@ def configure(env):
     elif (env["target"] == "debug"):
         env.Append(LINKFLAGS=['-O0'])
         env.Append(CPPFLAGS=['-O0', '-D_DEBUG', '-UNDEBUG', '-DDEBUG_ENABLED',
-                             '-DDEBUG_MEMORY_ALLOC', '-g', '-fno-limit-debug-info'])
+                             '-DDEBUG_MEMORY_ENABLED', '-g', '-fno-limit-debug-info'])
 
     env.Append(CPPFLAGS=['-DANDROID_ENABLED',
                          '-DUNIX_ENABLED', '-DNO_FCNTL', '-DMPC_FIXED_POINT'])
@@ -256,10 +256,10 @@ def configure(env):
 
     import methods
     env.Append(BUILDERS={'GLSL120': env.Builder(
-        action=methods.build_legacygl_headers, suffix='glsl.h', src_suffix='.glsl')})
+        action=methods.build_legacygl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
     env.Append(BUILDERS={'GLSL': env.Builder(
-        action=methods.build_glsl_headers, suffix='glsl.h', src_suffix='.glsl')})
+        action=methods.build_glsl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
     env.Append(BUILDERS={'GLSL120GLES': env.Builder(
-        action=methods.build_gles2_headers, suffix='glsl.h', src_suffix='.glsl')})
+        action=methods.build_gles2_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
 
     env.use_windows_spawn_fix()

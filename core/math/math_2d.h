@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -324,6 +325,25 @@ struct Rect2 {
 		g.pos.y -= p_by;
 		g.size.width += p_by * 2;
 		g.size.height += p_by * 2;
+		return g;
+	}
+	inline Rect2 grow_margin(Margin p_margin, real_t p_amount) const {
+		Rect2 g = *this;
+		g.grow_individual((MARGIN_LEFT == p_margin) ? p_amount : 0,
+				(MARGIN_TOP == p_margin) ? p_amount : 0,
+				(MARGIN_RIGHT == p_margin) ? p_amount : 0,
+				(MARGIN_BOTTOM == p_margin) ? p_amount : 0);
+		return g;
+	}
+
+	inline Rect2 grow_individual(real_t p_left, real_t p_top, real_t p_right, real_t p_bottom) const {
+
+		Rect2 g = *this;
+		g.pos.x -= p_left;
+		g.pos.y -= p_top;
+		g.size.width += p_left + p_right;
+		g.size.height += p_top + p_bottom;
+
 		return g;
 	}
 

@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -132,10 +133,7 @@ public:
 
 	inline T &operator[](int p_index) {
 
-		if (p_index < 0 || p_index >= size()) {
-			T &aux = *((T *)0); //nullreturn
-			ERR_FAIL_COND_V(p_index < 0 || p_index >= size(), aux);
-		}
+		PRAY_BAD_INDEX(p_index, size(), T);
 
 		_copy_on_write(); // wants to write, so copy on write.
 
@@ -144,10 +142,8 @@ public:
 
 	inline const T &operator[](int p_index) const {
 
-		if (p_index < 0 || p_index >= size()) {
-			const T &aux = *((T *)0); //nullreturn
-			ERR_FAIL_COND_V(p_index < 0 || p_index >= size(), aux);
-		}
+		PRAY_BAD_INDEX(p_index, size(), T);
+
 		// no cow needed, since it's reading
 		return _get_data()[p_index];
 	}

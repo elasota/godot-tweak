@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -59,7 +60,7 @@ protected:
 	RID test_texture;
 	RID white_texture;
 	RID test_material;
-	RID material_2d[16];
+	RID material_2d[32];
 
 	static VisualServer *(*create_func)();
 	static void _bind_methods();
@@ -1119,7 +1120,7 @@ public:
 
 	/* Materials for 2D on 3D */
 
-	RID material_2d_get(bool p_shaded, bool p_transparent, bool p_cut_alpha, bool p_opaque_prepass);
+	RID material_2d_get(bool p_shaded, bool p_transparent, bool p_double_sided, bool p_cut_alpha, bool p_opaque_prepass);
 
 	/* TESTING */
 

@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -94,8 +95,10 @@ static bool init_maximized = false;
 static bool init_windowed = false;
 static bool init_fullscreen = false;
 static bool init_use_custom_pos = false;
+#ifdef DEBUG_ENABLED
 static bool debug_collisions = false;
 static bool debug_navigation = false;
+#endif
 static int frame_delay = 0;
 static Vector2 init_custom_pos;
 static int video_driver_idx = -1;
@@ -496,10 +499,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		} else if (I->get() == "-debug" || I->get() == "-d") {
 			debug_mode = "local";
+#ifdef DEBUG_ENABLED
 		} else if (I->get() == "-debugcol" || I->get() == "-dc") {
 			debug_collisions = true;
 		} else if (I->get() == "-debugnav" || I->get() == "-dn") {
 			debug_navigation = true;
+#endif
 		} else if (I->get() == "-editor_scene") {
 
 			if (I->next()) {
@@ -559,8 +564,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		ScriptDebuggerRemote *sdr = memnew(ScriptDebuggerRemote);
 		uint16_t debug_port = GLOBAL_DEF("debug/remote_port", 6007);
 		if (debug_host.find(":") != -1) {
-			debug_port = debug_host.get_slicec(':', 1).to_int();
-			debug_host = debug_host.get_slicec(':', 0);
+			int sep_pos = debug_host.find_last(":");
+			debug_port = debug_host.substr(sep_pos + 1, debug_host.length()).to_int();
+			debug_host = debug_host.substr(0, sep_pos);
 		}
 		Error derr = sdr->connect_to_host(debug_host, debug_port);
 
@@ -666,7 +672,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		video_mode.width = globals->get("display/width");
 	if (!force_res && use_custom_res && globals->has("display/height"))
 		video_mode.height = globals->get("display/height");
-	if (!editor && (!bool(globals->get("display/allow_hidpi")) || force_lowdpi)) {
+	if (!editor && ((globals->has("display/allow_hidpi") && !globals->get("display/allow_hidpi")) || force_lowdpi)) {
 		OS::get_singleton()->_allow_hidpi = false;
 	}
 	if (use_custom_res && globals->has("display/fullscreen"))
@@ -1169,12 +1175,15 @@ bool Main::start() {
 
 		SceneTree *sml = main_loop->cast_to<SceneTree>();
 
+#ifdef DEBUG_ENABLED
 		if (debug_collisions) {
 			sml->set_debug_collisions_hint(true);
 		}
 		if (debug_navigation) {
 			sml->set_debug_navigation_hint(true);
 		}
+#endif
+
 #ifdef TOOLS_ENABLED
 
 		EditorNode *editor_node = NULL;
@@ -1396,6 +1405,7 @@ bool Main::start() {
 
 				String iconpath = GLOBAL_DEF("application/icon", "Variant()");
 				if (iconpath != "") {
+					iconpath = PathRemap::get_singleton()->get_remap(iconpath);
 					Image icon;
 					if (icon.load(iconpath) == OK)
 						OS::get_singleton()->set_icon(icon);

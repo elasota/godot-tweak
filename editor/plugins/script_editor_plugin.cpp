@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -35,7 +36,6 @@
 #include "io/resource_saver.h"
 #include "os/file_access.h"
 #include "os/input.h"
-#include "os/keyboard.h"
 #include "os/keyboard.h"
 #include "os/os.h"
 #include "scene/main/viewport.h"
@@ -1551,25 +1551,26 @@ void ScriptEditor::_menu_option(int p_option) {
 				}
 			}
 		}
-	}
+	} else {
 
-	EditorHelp *help = tab_container->get_current_tab_control()->cast_to<EditorHelp>();
-	if (help) {
+		EditorHelp *help = tab_container->get_current_tab_control()->cast_to<EditorHelp>();
+		if (help) {
 
-		switch (p_option) {
+			switch (p_option) {
 
-			case SEARCH_FIND: {
-				help->popup_search();
-			} break;
-			case SEARCH_FIND_NEXT: {
-				help->search_again();
-			} break;
-			case FILE_CLOSE: {
-				_close_current_tab();
-			} break;
-			case CLOSE_DOCS: {
-				_close_docs_tab();
-			} break;
+				case SEARCH_FIND: {
+					help->popup_search();
+				} break;
+				case SEARCH_FIND_NEXT: {
+					help->search_again();
+				} break;
+				case FILE_CLOSE: {
+					_close_current_tab();
+				} break;
+				case CLOSE_DOCS: {
+					_close_docs_tab();
+				} break;
+			}
 		}
 	}
 }
@@ -1614,6 +1615,7 @@ void ScriptEditor::_notification(int p_what) {
 
 		get_tree()->connect("tree_changed", this, "_tree_changed");
 		editor->connect("request_help", this, "_request_help");
+		editor->connect("request_help_search", this, "_help_search");
 	}
 
 	if (p_what == NOTIFICATION_EXIT_TREE) {
@@ -2156,8 +2158,6 @@ void ScriptEditor::_editor_play() {
 	debug_menu->get_popup()->set_item_disabled(debug_menu->get_popup()->get_item_index(DEBUG_STEP), true);
 	debug_menu->get_popup()->set_item_disabled(debug_menu->get_popup()->get_item_index(DEBUG_BREAK), false);
 	debug_menu->get_popup()->set_item_disabled(debug_menu->get_popup()->get_item_index(DEBUG_CONTINUE), true);
-
-	//debugger_gui->start_listening(Globals::get_singleton()->get("debug/debug_port"));
 }
 
 void ScriptEditor::_editor_pause() {
@@ -2317,6 +2317,9 @@ void ScriptEditor::set_window_layout(Ref<ConfigFile> p_layout) {
 	for (int i = 0; i < helps.size(); i++) {
 
 		String path = helps[i];
+		if (path == "") { // invalid, skip
+			continue;
+		}
 		_help_class_open(path);
 	}
 

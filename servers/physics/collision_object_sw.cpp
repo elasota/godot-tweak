@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -86,6 +87,7 @@ void CollisionObjectSW::remove_shape(int p_index) {
 		space->get_broadphase()->remove(shapes[i].bpid);
 		shapes[i].bpid = 0;
 	}
+	_shape_index_removed(p_index);
 	shapes[p_index].shape->remove_owner(this);
 	shapes.remove(p_index);
 

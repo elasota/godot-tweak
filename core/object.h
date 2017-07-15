@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -508,6 +509,12 @@ public:
 	void add_change_receptor(Object *p_receptor);
 	void remove_change_receptor(Object *p_receptor);
 
+// TODO: ensure 'this' is never NULL since it's UB, but by now, avoid warning flood
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-bool-conversion"
+#endif
+
 	template <class T>
 	T *cast_to() {
 
@@ -537,6 +544,10 @@ public:
 			return NULL;
 #endif
 	}
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 	enum {
 

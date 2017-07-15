@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -65,12 +66,14 @@ Ref<BitMap> TouchScreenButton::get_bitmask() const {
 
 void TouchScreenButton::set_shape(const Ref<Shape2D> &p_shape) {
 
+	if (shape.is_valid())
+		shape->disconnect("changed", this, "update");
+
 	shape = p_shape;
 
-	if (!is_inside_tree())
-		return;
-	if (!get_tree()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint())
-		return;
+	if (shape.is_valid())
+		shape->connect("changed", this, "update");
+
 	update();
 }
 
@@ -82,11 +85,17 @@ Ref<Shape2D> TouchScreenButton::get_shape() const {
 void TouchScreenButton::set_shape_centered(bool p_shape_centered) {
 
 	shape_centered = p_shape_centered;
+	update();
+}
 
-	if (!is_inside_tree())
-		return;
-	if (!get_tree()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint())
-		return;
+bool TouchScreenButton::is_shape_visible() const {
+
+	return shape_visible;
+}
+
+void TouchScreenButton::set_shape_visible(bool p_shape_visible) {
+
+	shape_visible = p_shape_visible;
 	update();
 }
 
@@ -118,6 +127,8 @@ void TouchScreenButton::_notification(int p_what) {
 					draw_texture(texture, Point2());
 			}
 
+			if (!shape_visible)
+				return;
 			if (!get_tree()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint())
 				return;
 			if (shape.is_valid()) {
@@ -193,6 +204,8 @@ void TouchScreenButton::_input(const InputEvent &p_event) {
 	if (p_event.device != 0)
 		return;
 
+	ERR_FAIL_COND(!is_visible());
+
 	if (passby_press) {
 
 		if (p_event.type == InputEvent::SCREEN_TOUCH && !p_event.screen_touch.pressed && finger_pressed == p_event.screen_touch.index) {
@@ -204,23 +217,7 @@ void TouchScreenButton::_input(const InputEvent &p_event) {
 
 			if (finger_pressed == -1 || p_event.screen_touch.index == finger_pressed) {
 
-				Point2 coord = (get_global_transform_with_canvas()).affine_inverse().xform(Point2(p_event.screen_touch.x, p_event.screen_touch.y));
-
-				bool touched = false;
-				if (bitmask.is_valid()) {
-
-					if (Rect2(Point2(), bitmask->get_size()).has_point(coord)) {
-
-						if (bitmask->get_bit(coord))
-							touched = true;
-					}
-				} else {
-
-					if (texture.is_valid())
-						touched = Rect2(Point2(), texture->get_size()).has_point(coord);
-				}
-
-				if (touched) {
+				if (_is_touch_inside(p_event.screen_touch)) {
 					if (finger_pressed == -1) {
 						_press(p_event.screen_touch.index);
 					}
@@ -238,41 +235,11 @@ void TouchScreenButton::_input(const InputEvent &p_event) {
 
 			if (p_event.screen_touch.pressed) {
 
-				if (!is_visible())
-					return;
-
 				const bool can_press = finger_pressed == -1;
 				if (!can_press)
 					return; //already fingering
 
-				Point2 coord = (get_global_transform_with_canvas()).affine_inverse().xform(Point2(p_event.screen_touch.x, p_event.screen_touch.y));
-				Rect2 item_rect = get_item_rect();
-
-				bool touched = false;
-				bool check_rect = true;
-				if (shape.is_valid()) {
-
-					check_rect = false;
-					Matrix32 xform = shape_centered ? Matrix32().translated(get_item_rect().size * 0.5f) : Matrix32();
-					touched = shape->collide(xform, unit_rect, Matrix32(0, coord + Vector2(0.5, 0.5)));
-				}
-
-				if (bitmask.is_valid()) {
-
-					check_rect = false;
-					if (!touched && Rect2(Point2(), bitmask->get_size()).has_point(coord)) {
-
-						if (bitmask->get_bit(coord))
-							touched = true;
-					}
-				}
-
-				if (!touched && check_rect) {
-					if (!texture.is_null())
-						touched = item_rect.has_point(coord);
-				}
-
-				if (touched) {
+				if (_is_touch_inside(p_event.screen_touch)) {
 					_press(p_event.screen_touch.index);
 				}
 			} else {
@@ -282,6 +249,41 @@ void TouchScreenButton::_input(const InputEvent &p_event) {
 			}
 		}
 	}
+}
+
+bool TouchScreenButton::_is_touch_inside(const InputEventScreenTouch &p_touch) {
+
+	Point2 coord = get_global_transform_with_canvas().affine_inverse().xform(Point2(p_touch.x, p_touch.y));
+
+	bool touched = false;
+	bool check_rect = true;
+
+	Rect2 item_rect = get_item_rect();
+
+	if (shape.is_valid()) {
+
+		check_rect = false;
+		Matrix32 xform = shape_centered ? Matrix32().translated(item_rect.size * 0.5f) : Matrix32();
+		touched = shape->collide(xform, unit_rect, Matrix32(0, coord + Vector2(0.5, 0.5)));
+	}
+
+	if (bitmask.is_valid()) {
+
+		check_rect = false;
+		if (!touched && Rect2(Point2(), bitmask->get_size()).has_point(coord)) {
+
+			if (bitmask->get_bit(coord))
+				touched = true;
+		}
+	}
+
+	if (!touched && check_rect) {
+
+		if (texture.is_valid())
+			touched = item_rect.has_point(coord);
+	}
+
+	return touched;
 }
 
 void TouchScreenButton::_press(int p_finger_pressed) {
@@ -373,6 +375,9 @@ void TouchScreenButton::_bind_methods() {
 	ObjectTypeDB::bind_method(_MD("set_shape_centered", "bool"), &TouchScreenButton::set_shape_centered);
 	ObjectTypeDB::bind_method(_MD("is_shape_centered"), &TouchScreenButton::is_shape_centered);
 
+	ObjectTypeDB::bind_method(_MD("set_shape_visible", "bool"), &TouchScreenButton::set_shape_visible);
+	ObjectTypeDB::bind_method(_MD("is_shape_visible"), &TouchScreenButton::is_shape_visible);
+
 	ObjectTypeDB::bind_method(_MD("set_action", "action"), &TouchScreenButton::set_action);
 	ObjectTypeDB::bind_method(_MD("get_action"), &TouchScreenButton::get_action);
 
@@ -391,6 +396,7 @@ void TouchScreenButton::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "bitmask", PROPERTY_HINT_RESOURCE_TYPE, "BitMap"), _SCS("set_bitmask"), _SCS("get_bitmask"));
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shape", PROPERTY_HINT_RESOURCE_TYPE, "Shape2D"), _SCS("set_shape"), _SCS("get_shape"));
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shape_centered"), _SCS("set_shape_centered"), _SCS("is_shape_centered"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shape_visible"), _SCS("set_shape_visible"), _SCS("is_shape_visible"));
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "passby_press"), _SCS("set_passby_press"), _SCS("is_passby_press_enabled"));
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "action"), _SCS("set_action"), _SCS("get_action"));
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "visibility_mode", PROPERTY_HINT_ENUM, "Always,TouchScreen Only"), _SCS("set_visibility_mode"), _SCS("get_visibility_mode"));
@@ -406,6 +412,7 @@ TouchScreenButton::TouchScreenButton() {
 	passby_press = false;
 	visibility = VISIBILITY_ALWAYS;
 	shape_centered = true;
+	shape_visible = true;
 	unit_rect = Ref<RectangleShape2D>(memnew(RectangleShape2D));
 	unit_rect->set_extents(Vector2(0.5, 0.5));
 }

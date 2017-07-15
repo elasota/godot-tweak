@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,13 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_import_export.h"
+
 #include "editor/editor_file_system.h"
 #include "editor/plugins/script_editor_plugin.h"
 #include "editor_node.h"
 #include "editor_settings.h"
 #include "globals.h"
 #include "io/config_file.h"
-#include "io/md5.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "io/zip_io.h"
@@ -42,6 +43,8 @@
 #include "os/file_access.h"
 #include "script_language.h"
 #include "version.h"
+
+#include "thirdparty/misc/md5.h"
 
 String EditorImportPlugin::validate_source_path(const String &p_path) {
 
@@ -811,7 +814,7 @@ Error EditorExportPlatform::export_project_files(EditorExportSaveFunction p_func
 				flags |= EditorTextureImportPlugin::IMAGE_FLAG_FILTER;
 			if (!Globals::get_singleton()->get("image_loader/gen_mipmaps"))
 				flags |= EditorTextureImportPlugin::IMAGE_FLAG_NO_MIPMAPS;
-			if (!Globals::get_singleton()->get("image_loader/repeat"))
+			if (Globals::get_singleton()->get("image_loader/repeat"))
 				flags |= EditorTextureImportPlugin::IMAGE_FLAG_REPEAT;
 
 			flags |= EditorTextureImportPlugin::IMAGE_FLAG_FIX_BORDER_ALPHA;
@@ -1046,7 +1049,7 @@ void EditorExportPlatform::gen_export_flags(Vector<String> &r_flags, int p_flags
 
 		r_flags.push_back("-rdebug");
 
-		r_flags.push_back(host + ":" + String::num(GLOBAL_DEF("debug/debug_port", 6007)));
+		r_flags.push_back(host + ":" + String::num(GLOBAL_DEF("network/debug_port", 6007)));
 
 		List<String> breakpoints;
 		ScriptEditor::get_singleton()->get_breakpoints(&breakpoints);

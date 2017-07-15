@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -293,7 +294,7 @@ public:
 	DVector<uint8_t> get_data() const;
 
 	Error load(const String &p_path);
-	Error save_png(const String &p_path);
+	Error save_png(const String &p_path) const;
 
 	/**
 	 * create an empty image
@@ -350,6 +351,12 @@ public:
 	void normalmap_to_xy();
 
 	void blit_rect(const Image &p_src, const Rect2 &p_src_rect, const Point2 &p_dest);
+	void blit_rect_mask(const Image &p_src, const Image &p_mask, const Rect2 &p_src_rect, const Point2 &p_dest);
+	void blend_rect(const Image &p_src, const Rect2 &p_src_rect, const Point2 &p_dest);
+	void blend_rect_mask(const Image &p_src, const Image &p_mask, const Rect2 &p_src_rect, const Point2 &p_dest);
+
+	void fill(const Color &p_color);
+	
 	void brush_transfer(const Image &p_src, const Image &p_brush, const Point2 &p_dest);
 	Image brushed(const Image &p_src, const Image &p_brush, const Point2 &p_dest) const;
 

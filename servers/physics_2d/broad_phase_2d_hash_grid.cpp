@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -202,9 +203,11 @@ void BroadPhase2DHashGrid::_exit_grid(Element *p_elem, const Rect2 &p_rect, bool
 	if (sz.width * sz.height > large_object_min_surface) {
 
 		//unpair all elements, instead of checking all, just check what is already paired, so we at least save from checking static vs static
-		for (Map<Element *, PairData *>::Element *E = p_elem->paired.front(); E; E = E->next()) {
-
+		Map<Element *, PairData *>::Element *E = p_elem->paired.front();
+		while (E) {
+			Map<Element *, PairData *>::Element *next = E->next();
 			_unpair_attempt(p_elem, E->key());
+			E = next;
 		}
 
 		if (large_elements[p_elem].dec() == 0) {

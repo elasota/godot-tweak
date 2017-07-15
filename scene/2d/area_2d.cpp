@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -328,7 +329,10 @@ void Area2D::_clear_monitoring() {
 
 			Object *obj = ObjectDB::get_instance(E->key());
 			Node *node = obj ? obj->cast_to<Node>() : NULL;
-			ERR_CONTINUE(!node);
+
+			if (!node) //node may have been deleted in previous frame or at other legiminate point
+				continue;
+			//ERR_CONTINUE(!node);
 
 			node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_body_enter_tree);
 			node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_body_exit_tree);
@@ -356,7 +360,7 @@ void Area2D::_clear_monitoring() {
 			Object *obj = ObjectDB::get_instance(E->key());
 			Node *node = obj ? obj->cast_to<Node>() : NULL;
 
-			if (!node) //node may have been deleted in previous frame, this should not be an error
+			if (!node) //node may have been deleted in previous frame or at other legiminate point
 				continue;
 			//ERR_CONTINUE(!node);
 
@@ -388,15 +392,24 @@ void Area2D::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_ENTER_TREE: {
 
-			set_enable_monitoring(monitoring_stored);
+			if (monitoring_stored) {
+				set_enable_monitoring(true);
+				monitoring_stored = false;
+			}
 		} break;
 	}
 }
 
 void Area2D::set_enable_monitoring(bool p_enable) {
 
+	if (!is_inside_tree()) {
+		monitoring_stored = p_enable;
+		return;
+	}
+
 	if (p_enable == monitoring)
 		return;
+
 	if (locked) {
 		ERR_EXPLAIN("Function blocked during in/out signal. Use call_deferred(\"set_enable_monitoring\",true/false)");
 	}
@@ -418,7 +431,7 @@ void Area2D::set_enable_monitoring(bool p_enable) {
 
 bool Area2D::is_monitoring_enabled() const {
 
-	return monitoring;
+	return monitoring || monitoring_stored;
 }
 
 void Area2D::set_monitorable(bool p_enable) {
@@ -646,7 +659,7 @@ Area2D::Area2D()
 	monitorable = false;
 	collision_mask = 1;
 	layer_mask = 1;
-	monitoring_stored = true;
+	monitoring_stored = false;
 	set_enable_monitoring(true);
 	set_monitorable(true);
 }

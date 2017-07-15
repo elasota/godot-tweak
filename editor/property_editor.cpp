@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -28,6 +29,7 @@
 /*************************************************************************/
 #include "property_editor.h"
 #include "array_property_edit.h"
+#include "dictionary_property_edit.h"
 #include "editor_file_system.h"
 #include "editor_help.h"
 #include "editor_import_export.h"
@@ -194,6 +196,12 @@ void CustomPropertyEditor::_menu_option(int p_which) {
 						}
 					}
 				} break;
+				case OBJ_MENU_NEW_SCRIPT: {
+
+					if (owner->cast_to<Node>())
+						EditorNode::get_singleton()->get_scene_tree_dock()->open_script_dialog(owner->cast_to<Node>());
+
+				} break;
 				default: {
 
 					ERR_FAIL_COND(inheritors_array.empty());
@@ -212,6 +220,7 @@ void CustomPropertyEditor::_menu_option(int p_which) {
 			}
 
 		} break;
+
 		default: {}
 	}
 }
@@ -647,7 +656,10 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			menu->clear();
 			menu->set_size(Size2(1, 1));
 
-			if (hint_text != "") {
+			if (p_name == "script/script" && hint_text == "Script" && owner->cast_to<Node>()) {
+				menu->add_icon_item(get_icon("Script", "EditorIcons"), TTR("New Script"), OBJ_MENU_NEW_SCRIPT);
+				menu->add_separator();
+			} else if (hint_text != "") {
 				int idx = 0;
 
 				for (int i = 0; i < hint_text.get_slice_count(","); i++) {
@@ -2017,7 +2029,7 @@ void PropertyEditor::set_item_text(TreeItem *p_item, int p_type, const String &p
 		} break;
 		case Variant::COLOR: {
 
-			p_item->set_custom_bg_color(1, obj->get(p_name));
+			tree->update();
 			//p_item->set_text(1,obj->get(p_name));
 
 		} break;
@@ -2051,6 +2063,10 @@ void PropertyEditor::set_item_text(TreeItem *p_item, int p_type, const String &p
 				RES res = obj->get(p_name).operator RefPtr();
 				if (res->is_type("Texture")) {
 					int tw = EditorSettings::get_singleton()->get("property_editor/texture_preview_width");
+					Vector2 size(res->call("get_width"), res->call("get_height"));
+					if (size.width < size.height) {
+						tw = MAX((size.width / size.height) * tw, 1);
+					}
 					p_item->set_icon_max_width(1, tw);
 					p_item->set_icon(1, res);
 					p_item->set_text(1, "");
@@ -2090,7 +2106,9 @@ void PropertyEditor::set_item_text(TreeItem *p_item, int p_type, const String &p
 					}
 				}
 
-				if (!res->is_type("Texture")) {
+				if (res->is_type("Script")) {
+					p_item->set_text(1, res->get_path().get_file());
+				} else if (!res->is_type("Texture")) {
 					//texture already previews via itself
 					EditorResourcePreview::get_singleton()->queue_edited_resource_preview(res, this, "_resource_preview_done", p_item->get_instance_ID());
 				}
@@ -2411,10 +2429,7 @@ TreeItem *PropertyEditor::get_parent_node(String p_path, HashMap<String, TreeIte
 		item = tree->create_item(parent);
 
 		String name = (p_path.find("/") != -1) ? p_path.right(p_path.find_last("/") + 1) : p_path;
-		if (capitalize_paths)
-			item->set_text(0, name.capitalize());
-		else
-			item->set_text(0, name);
+		item->set_text(0, capitalize_paths ? name.capitalize() : name);
 		item->set_tooltip(0, p_path);
 		if (item->get_parent() != root) {
 			item->set_icon(0, get_icon("Folder", "EditorIcons"));
@@ -2871,7 +2886,7 @@ void PropertyEditor::update_tree() {
 					if (type == "")
 						type = "Object";
 
-					ObjectID id = obj->get(p.name);
+					ObjectID id = _get_curent_remote_object_id(p.name);
 					if (id != 0) {
 						item->set_text(1, type + " ID: " + itos(id));
 						item->add_button(1, get_icon("EditResource", "EditorIcons"));
@@ -2976,6 +2991,13 @@ void PropertyEditor::update_tree() {
 				if (show_type_icons)
 					item->set_icon(0, get_icon("ArrayData", "EditorIcons"));
 
+			} break;
+			case Variant::DICTIONARY: {
+
+				item->set_cell_mode(1, TreeItem::CELL_MODE_CUSTOM);
+				item->add_button(1, get_icon("EditResource", "EditorIcons"));
+				Dictionary d = obj->get(p.name);
+				item->set_text(1, "Dictionary{" + itos(d.size()) + "}");
 			} break;
 
 			case Variant::INT_ARRAY: {
@@ -3151,7 +3173,7 @@ void PropertyEditor::update_tree() {
 				item->set_cell_mode(1, TreeItem::CELL_MODE_CUSTOM);
 				item->set_editable(1, !read_only);
 				//				item->set_text(1,obj->get(p.name));
-				item->set_custom_bg_color(1, obj->get(p.name));
+				item->set_custom_draw(1, this, "_draw_transparency");
 				if (show_type_icons)
 					item->set_icon(0, get_icon("Color", "EditorIcons"));
 
@@ -3187,14 +3209,26 @@ void PropertyEditor::update_tree() {
 					type = p.hint_string;
 
 				if (obj->get(p.name).get_type() == Variant::NIL || obj->get(p.name).operator RefPtr().is_null()) {
-					item->set_text(1, "<null>");
-					item->set_icon(1, Ref<Texture>());
+
+					if (Object *_o = obj->get(p.name)) {
+						if (_o->is_type("ScriptEditorDebuggerInspectedObject"))
+							item->set_text(1, _o->call("get_title"));
+						else
+							item->set_text(1, String(_o->get_type_name()) + " ID: " + itos(obj->get_instance_ID()));
+					} else {
+						item->set_text(1, "<null>");
+						item->set_icon(1, Ref<Texture>());
+					}
 
 				} else {
 					RES res = obj->get(p.name).operator RefPtr();
 
 					if (res->is_type("Texture")) {
 						int tw = EditorSettings::get_singleton()->get("property_editor/texture_preview_width");
+						Vector2 size(res->call("get_width"), res->call("get_height"));
+						if (size.width < size.height) {
+							tw = MAX((size.width / size.height) * tw, 1);
+						}
 						item->set_icon_max_width(1, tw);
 						item->set_icon(1, res);
 						item->set_text(1, "");
@@ -3218,7 +3252,9 @@ void PropertyEditor::update_tree() {
 					} else if (res.is_valid()) {
 						item->set_tooltip(1, res->get_name() + " (" + res->get_type() + ")");
 					}
-					if (!res->is_type("Texture")) {
+					if (res->is_type("Script")) {
+						item->set_text(1, res->get_path().get_file());
+					} else if (!res->is_type("Texture")) {
 						//texture already previews via itself
 						EditorResourcePreview::get_singleton()->queue_edited_resource_preview(res, this, "_resource_preview_done", item->get_instance_ID());
 					}
@@ -3284,6 +3320,53 @@ void PropertyEditor::update_tree() {
 			item->add_button(1, get_icon("ReloadEmpty", "EditorIcons"), 3, true);
 		}
 	}
+}
+
+void PropertyEditor::_draw_transparency(Object *t, const Rect2 &p_rect) {
+
+	TreeItem *ti = t->cast_to<TreeItem>();
+	if (!ti)
+		return;
+
+	Color color = obj->get(ti->get_metadata(1));
+	Ref<Texture> arrow = tree->get_icon("select_arrow");
+
+	// make a little space between consecutive color fields
+	Rect2 area = p_rect;
+	area.pos.y += 1;
+	area.size.height -= 2;
+	area.size.width -= arrow->get_size().width + 5;
+	tree->draw_texture_rect(get_icon("Transparent", "EditorIcons"), area, true);
+	tree->draw_rect(area, color);
+}
+
+ObjectID PropertyEditor::_get_curent_remote_object_id(const StringName &p_name) {
+
+	ObjectID id = 0;
+	if (obj) {
+		id = obj->get(p_name);
+		if (id == 0) {
+
+			Object *debugObj = NULL;
+
+			if (obj->is_type("ScriptEditorDebuggerVariables")) {
+				if (Object *oo = obj->call("get_var_value", p_name)) {
+					if (oo->is_type("ScriptEditorDebuggerInspectedObject"))
+						debugObj = oo;
+				}
+			} else if (obj->is_type("ScriptEditorDebuggerInspectedObject")) {
+				if (Object *oo = obj->call("get_variant", p_name)) {
+					if (oo->is_type("ScriptEditorDebuggerInspectedObject"))
+						debugObj = oo;
+				}
+			}
+			if (debugObj) {
+				id = debugObj->call("get_remote_object_id");
+			}
+		}
+	}
+
+	return id;
 }
 
 void PropertyEditor::_item_selected() {
@@ -3375,8 +3458,8 @@ void PropertyEditor::_item_edited() {
 		} break;
 		case Variant::BOOL: {
 
-			_edit_set(name, item->is_checked(1));
 			item->set_tooltip(1, item->is_checked(1) ? "True" : "False");
+			_edit_set(name, item->is_checked(1));
 		} break;
 		case Variant::INT:
 		case Variant::REAL: {
@@ -3528,12 +3611,16 @@ void PropertyEditor::edit(Object *p_object) {
 
 	if (obj == p_object)
 		return;
+
+	obj = p_object;
+
 	if (obj) {
 
 		obj->remove_change_receptor(this);
-	}
 
-	obj = p_object;
+		if (obj->is_type("ScriptEditorDebuggerInspectedObject"))
+			set_enable_capitalize_paths(false);
+	}
 
 	evaluator->edit(p_object);
 
@@ -3642,15 +3729,24 @@ void PropertyEditor::_edit_button(Object *p_item, int p_column, int p_button) {
 
 		} else if (t == Variant::OBJECT) {
 
-			RES r = obj->get(n);
-			if (r.is_valid()) {
+			Variant var = obj->get(n);
 
+			RES r = var;
+			if (r.is_valid()) {
 				emit_signal("resource_selected", r, n);
+			} else if (Object *o = var) {
+				// Remote object clicked form property editor cell
+				if (o->is_type("ScriptEditorDebuggerInspectedObject")) {
+					ObjectID id = o->call("get_remote_object_id");
+					emit_signal("object_id_selected", id);
+					print_line(String("OBJ ID SELECTED: ") + itos(id));
+				}
 			}
 		} else if (t == Variant::INT && h == PROPERTY_HINT_OBJECT_ID) {
 
-			emit_signal("object_id_selected", obj->get(n));
-			print_line("OBJ ID SELECTED");
+			ObjectID id = _get_curent_remote_object_id(n);
+			emit_signal("object_id_selected", id);
+			print_line(String("OBJ ID SELECTED: ") + itos(id));
 
 		} else if (t == Variant::ARRAY || t == Variant::INT_ARRAY || t == Variant::REAL_ARRAY || t == Variant::STRING_ARRAY || t == Variant::VECTOR2_ARRAY || t == Variant::VECTOR3_ARRAY || t == Variant::COLOR_ARRAY || t == Variant::RAW_ARRAY) {
 
@@ -3665,6 +3761,11 @@ void PropertyEditor::_edit_button(Object *p_item, int p_column, int p_button) {
 			ape->edit(obj, n, Variant::Type(t));
 
 			EditorNode::get_singleton()->push_item(ape.ptr());
+		} else if (t == Variant::DICTIONARY) {
+
+			Ref<DictionaryPropertyEdit> dpe = memnew(DictionaryPropertyEdit);
+			dpe->edit(obj, n);
+			EditorNode::get_singleton()->push_item(dpe.ptr());
 		}
 	}
 }
@@ -3767,6 +3868,7 @@ void PropertyEditor::_bind_methods() {
 	ObjectTypeDB::bind_method("update_tree", &PropertyEditor::update_tree);
 	ObjectTypeDB::bind_method("_resource_preview_done", &PropertyEditor::_resource_preview_done);
 	ObjectTypeDB::bind_method("refresh", &PropertyEditor::refresh);
+	ObjectTypeDB::bind_method("_draw_transparency", &PropertyEditor::_draw_transparency);
 
 	ObjectTypeDB::bind_method(_MD("get_drag_data_fw"), &PropertyEditor::get_drag_data_fw);
 	ObjectTypeDB::bind_method(_MD("can_drop_data_fw"), &PropertyEditor::can_drop_data_fw);
@@ -3809,9 +3911,15 @@ String PropertyEditor::get_selected_path() const {
 		return "";
 }
 
-void PropertyEditor::set_capitalize_paths(bool p_capitalize) {
+bool PropertyEditor::is_capitalize_paths_enabled() const {
+
+	return capitalize_paths;
+}
+
+void PropertyEditor::set_enable_capitalize_paths(bool p_capitalize) {
 
 	capitalize_paths = p_capitalize;
+	update_tree_pending = true;
 }
 
 void PropertyEditor::set_autoclear(bool p_enable) {
@@ -3909,6 +4017,7 @@ PropertyEditor::PropertyEditor() {
 	capitalize_paths = true;
 	autoclear = false;
 	tree->set_column_titles_visible(false);
+	tree->add_constant_override("button_margin", 0);
 
 	keying = false;
 	read_only = false;

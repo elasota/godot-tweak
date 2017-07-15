@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -512,12 +513,13 @@ Error EditorMeshImportPlugin::import(const String &p_path, const Ref<ResourceImp
 
 				has_index_data = false;
 
-				if (f->eof_reached())
-					break;
 			}
 
 			if (l.begins_with("o ")) //name
 				name = l.substr(2, l.length()).strip_edges();
+
+			if (f->eof_reached())
+				break;
 		}
 	}
 

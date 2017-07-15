@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -36,12 +37,6 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <windows.h>
-
-#ifdef WINRT_ENABLED
-#include <Synchapi.h>
-#include <collection.h>
-#include <ppltasks.h>
-#endif
 
 /*
 
@@ -129,14 +124,6 @@ Error DirAccessWindows::change_dir(String p_dir) {
 
 	GLOBAL_LOCK_FUNCTION
 
-#ifdef WINRT_ENABLED
-
-	p_dir = fix_path(p_dir);
-	current_dir = normalize_path(p_dir);
-
-	return OK;
-#else
-
 	p_dir = fix_path(p_dir);
 
 	wchar_t real_current_dir_name[2048];
@@ -169,18 +156,11 @@ Error DirAccessWindows::change_dir(String p_dir) {
 	//}
 
 	return worked ? OK : ERR_INVALID_PARAMETER;
-#endif
 }
 
 Error DirAccessWindows::make_dir(String p_dir) {
 
 	GLOBAL_LOCK_FUNCTION
-
-#ifdef WINRT_ENABLED
-
-	return ERR_CANT_CREATE;
-
-#else
 
 	if (p_dir.is_rel_path())
 		p_dir = get_current_dir().plus_file(p_dir);
@@ -206,8 +186,6 @@ Error DirAccessWindows::make_dir(String p_dir) {
 	};
 
 	return ERR_CANT_CREATE;
-
-#endif
 }
 
 String DirAccessWindows::get_current_dir() {

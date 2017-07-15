@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -64,21 +65,17 @@ void Button::_notification(int p_what) {
 
 		//print_line(get_text()+": "+itos(is_flat())+" hover "+itos(get_draw_mode()));
 
-		Ref<StyleBox> style = get_stylebox("normal");
-
 		switch (get_draw_mode()) {
 
 			case DRAW_NORMAL: {
 
-				style = get_stylebox("normal");
 				if (!flat)
-					style->draw(ci, Rect2(Point2(0, 0), size));
+					get_stylebox("normal")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color");
 			} break;
 			case DRAW_PRESSED: {
 
-				style = get_stylebox("pressed");
-				style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("pressed")->draw(ci, Rect2(Point2(0, 0), size));
 				if (has_color("font_color_pressed"))
 					color = get_color("font_color_pressed");
 				else
@@ -87,15 +84,13 @@ void Button::_notification(int p_what) {
 			} break;
 			case DRAW_HOVER: {
 
-				style = get_stylebox("hover");
-				style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("hover")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color_hover");
 
 			} break;
 			case DRAW_DISABLED: {
 
-				style = get_stylebox("disabled");
-				style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("disabled")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color_disabled");
 
 			} break;
@@ -107,6 +102,7 @@ void Button::_notification(int p_what) {
 			style->draw(ci, Rect2(Point2(), size));
 		}
 
+		Ref<StyleBox> style = get_stylebox("normal");
 		Ref<Font> font = get_font("font");
 		Ref<Texture> _icon;
 		if (icon.is_null() && has_icon("icon"))

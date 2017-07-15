@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -95,6 +96,7 @@ const char *GDTokenizer::token_names[TK_MAX] = {
 	"setget",
 	"const",
 	"var",
+	"enum",
 	"preload",
 	"assert",
 	"yield",
@@ -861,6 +863,7 @@ void GDTokenizerText::_advance() {
 								{ TK_PR_SIGNAL, "signal" },
 								{ TK_PR_BREAKPOINT, "breakpoint" },
 								{ TK_PR_CONST, "const" },
+								{ TK_PR_ENUM, "enum" },
 								//controlflow
 								{ TK_CF_IF, "if" },
 								{ TK_CF_ELIF, "elif" },

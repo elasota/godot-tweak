@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "tween.h"
-#include "method_bind_ext.inc"
+#include "method_bind_ext.gen.inc"
 
 void Tween::_add_pending_command(StringName p_key, const Variant &p_arg1, const Variant &p_arg2, const Variant &p_arg3, const Variant &p_arg4, const Variant &p_arg5, const Variant &p_arg6, const Variant &p_arg7, const Variant &p_arg8, const Variant &p_arg9, const Variant &p_arg10) {
 
@@ -609,6 +610,7 @@ void Tween::_tween_process(float p_delta) {
 		_apply_tween_value(data, result);
 
 		if (data.finish) {
+			_apply_tween_value(data, data.final_val);
 			emit_signal("tween_complete", object, data.key);
 			// not repeat mode, remove completed action
 			if (!repeat)

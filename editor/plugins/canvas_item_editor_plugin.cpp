@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -833,7 +834,7 @@ void CanvasItemEditor::_prepare_drag(const Point2 &p_click_pos) {
 			se->undo_pivot = canvas_item->cast_to<Node2D>()->edit_get_pivot();
 	}
 
-	if (selection.size() == 1 && selection[0]->cast_to<Node2D>()) {
+	if (selection.size() == 1 && selection[0]->cast_to<Node2D>() && bone_ik_list.size() == 0) {
 		drag = DRAG_NODE_2D;
 		drag_point_from = selection[0]->cast_to<Node2D>()->get_global_pos();
 	} else {
@@ -1036,17 +1037,27 @@ void CanvasItemEditor::_viewport_input_event(const InputEvent &p_event) {
 
 		if (b.button_index == BUTTON_WHEEL_DOWN) {
 
-			if (zoom < MIN_ZOOM)
-				return;
+			if (bool(EditorSettings::get_singleton()->get("2d_editor/scroll_to_pan"))) {
 
-			float prev_zoom = zoom;
-			zoom = zoom * 0.95;
-			{
-				Point2 ofs(b.x, b.y);
-				ofs = ofs / prev_zoom - ofs / zoom;
-				h_scroll->set_val(h_scroll->get_val() + ofs.x);
-				v_scroll->set_val(v_scroll->get_val() + ofs.y);
+				v_scroll->set_val(v_scroll->get_val() + int(EditorSettings::get_singleton()->get("2d_editor/pan_speed")) / zoom * b.factor);
+
 			}
+			else {
+
+				if (zoom < MIN_ZOOM)
+					return;
+
+				float prev_zoom = zoom;
+				zoom = zoom * (1 - (0.05 * b.factor));
+				{
+					Point2 ofs(b.x, b.y);
+					ofs = ofs / prev_zoom - ofs / zoom;
+					h_scroll->set_val(h_scroll->get_val() + ofs.x);
+					v_scroll->set_val(v_scroll->get_val() + ofs.y);
+				}
+
+			}
+
 			_update_scroll(0);
 			viewport->update();
 			return;
@@ -1054,21 +1065,56 @@ void CanvasItemEditor::_viewport_input_event(const InputEvent &p_event) {
 
 		if (b.button_index == BUTTON_WHEEL_UP) {
 
-			if (zoom > MAX_ZOOM)
-				return;
+			if (bool(EditorSettings::get_singleton()->get("2d_editor/scroll_to_pan"))) {
 
-			float prev_zoom = zoom;
-			zoom = zoom * (1.0 / 0.95);
-			{
-				Point2 ofs(b.x, b.y);
-				ofs = ofs / prev_zoom - ofs / zoom;
-				h_scroll->set_val(h_scroll->get_val() + ofs.x);
-				v_scroll->set_val(v_scroll->get_val() + ofs.y);
+				v_scroll->set_val(v_scroll->get_val() - int(EditorSettings::get_singleton()->get("2d_editor/pan_speed")) / zoom * b.factor);
+
+			}
+			else {
+
+				if (zoom > MAX_ZOOM)
+					return;
+
+				float prev_zoom = zoom;
+				zoom = zoom * ((0.95 + (0.05 * b.factor)) / 0.95);
+				{
+					Point2 ofs(b.x, b.y);
+					ofs = ofs / prev_zoom - ofs / zoom;
+					h_scroll->set_val(h_scroll->get_val() + ofs.x);
+					v_scroll->set_val(v_scroll->get_val() + ofs.y);
+				}
+
 			}
 
 			_update_scroll(0);
 			viewport->update();
 			return;
+		}
+
+		if (b.button_index == BUTTON_WHEEL_LEFT) {
+
+			if (bool(EditorSettings::get_singleton()->get("2d_editor/scroll_to_pan"))) {
+
+				h_scroll->set_val(h_scroll->get_val() - int(EditorSettings::get_singleton()->get("2d_editor/pan_speed")) / zoom * b.factor);
+
+				_update_scroll(0);
+				viewport->update();
+
+			}
+
+		}
+
+		if (b.button_index == BUTTON_WHEEL_RIGHT) {
+
+			if (bool(EditorSettings::get_singleton()->get("2d_editor/scroll_to_pan"))) {
+
+				h_scroll->set_val(h_scroll->get_val() + int(EditorSettings::get_singleton()->get("2d_editor/pan_speed")) / zoom * b.factor);
+
+				_update_scroll(0);
+				viewport->update();
+
+			}
+
 		}
 
 		if (b.button_index == BUTTON_RIGHT) {
@@ -1359,7 +1405,7 @@ void CanvasItemEditor::_viewport_input_event(const InputEvent &p_event) {
 					}
 				}
 
-				if (drag != DRAG_NONE && (!Cbone || drag != DRAG_ALL)) {
+				if (drag != DRAG_NONE && (!Cbone || (drag != DRAG_ALL && drag != DRAG_NODE_2D))) {
 					drag_from = transform.affine_inverse().xform(click);
 					se->undo_state = canvas_item->edit_get_state();
 					if (canvas_item->cast_to<Node2D>())
@@ -1529,7 +1575,7 @@ void CanvasItemEditor::_viewport_input_event(const InputEvent &p_event) {
 
 			dto = dto - (drag == DRAG_ALL || drag == DRAG_NODE_2D ? drag_from - drag_point_from : Vector2(0, 0));
 
-			if (uniform && drag == DRAG_ALL) {
+			if (uniform && (drag == DRAG_ALL || drag == DRAG_NODE_2D)) {
 				if (ABS(dto.x - drag_point_from.x) > ABS(dto.y - drag_point_from.y)) {
 					dto.y = drag_point_from.y;
 				} else {

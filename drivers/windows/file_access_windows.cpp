@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -114,7 +115,16 @@ void FileAccessWindows::close() {
 		//int rename_error = _wrename((save_path+".tmp").c_str(),save_path.c_str());
 
 		bool rename_error;
+
+#ifdef WINRT_ENABLED
+		// WinRT has no PathFileExists, so we check attributes instead
+		DWORD fileAttr;
+
+		fileAttr = GetFileAttributesW(save_path.c_str());
+		if (INVALID_FILE_ATTRIBUTES == fileAttr) {
+#else
 		if (!PathFileExistsW(save_path.c_str())) {
+#endif
 			//creating new file
 			rename_error = _wrename((save_path + ".tmp").c_str(), save_path.c_str()) != 0;
 		} else {
@@ -129,6 +139,7 @@ void FileAccessWindows::close() {
 		ERR_FAIL_COND(rename_error);
 	}
 }
+
 bool FileAccessWindows::is_open() const {
 
 	return (f != NULL);

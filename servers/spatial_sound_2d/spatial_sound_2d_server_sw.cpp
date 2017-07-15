@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -94,6 +95,7 @@ SpatialSound2DServerSW::Source::Voice::Voice() {
 
 	active = false;
 	restart = false;
+	priority = 0;
 	pitch_scale = 1.0;
 	volume_scale = 0.0;
 	voice_rid = AudioServer::get_singleton()->voice_create();
@@ -387,7 +389,7 @@ void SpatialSound2DServerSW::source_set_audio_stream(RID p_source, AudioServer::
 
 } //null to unset
 
-SpatialSound2DServer::SourceVoiceID SpatialSound2DServerSW::source_play_sample(RID p_source, RID p_sample, int p_mix_rate, int p_voice) {
+SpatialSound2DServer::SourceVoiceID SpatialSound2DServerSW::source_play_sample(RID p_source, RID p_sample, int p_mix_rate, int p_voice, int p_priority) {
 
 	Source *source = source_owner.get(p_source);
 	ERR_FAIL_COND_V(!source, SOURCE_INVALID_VOICE);
@@ -395,16 +397,35 @@ SpatialSound2DServer::SourceVoiceID SpatialSound2DServerSW::source_play_sample(R
 	int to_play = 0;
 
 	if (p_voice == SOURCE_NEXT_VOICE) {
-		to_play = source->last_voice + 1;
-		if (to_play >= source->voices.size())
-			to_play = 0;
-
+		const int num_voices = source->voices.size();
+		bool free_found = false;
+		int lowest_priority_voice = -1;
+		int lowest_priority = 0x7FFFFFFF;
+		for (int i = 0; i < num_voices; i++) {
+			const int candidate = (source->last_voice + 1 + i) % num_voices;
+			const Source::Voice &v = source->voices[candidate];
+			if (!v.active && !v.restart) {
+				free_found = true;
+				to_play = candidate;
+				break;
+			}
+			if (v.priority < lowest_priority) {
+				lowest_priority = v.priority;
+				lowest_priority_voice = candidate;
+			}
+		}
+		if (!free_found)
+			to_play = lowest_priority_voice;
 	} else
 		to_play = p_voice;
 
 	ERR_FAIL_INDEX_V(to_play, source->voices.size(), SOURCE_INVALID_VOICE);
 
+	if ((source->voices[to_play].active || source->voices[to_play].restart) && source->voices[to_play].priority > p_priority)
+		return SOURCE_INVALID_VOICE;
+
 	source->voices[to_play].restart = true;
+	source->voices[to_play].priority = p_priority;
 	source->voices[to_play].sample_rid = p_sample;
 	source->voices[to_play].sample_mix_rate = p_mix_rate;
 	source->voices[to_play].pitch_scale = 1;
@@ -811,10 +832,7 @@ void SpatialSound2DServerSW::update(float p_delta) {
 		float total_distance = 0;
 		for (Set<RID>::Element *L = space->listeners.front(); L; L = L->next()) {
 			Listener *listener = listener_owner.get(L->get());
-			float d = listener->transform.get_origin().distance_to(source->transform.get_origin());
-			if (d == 0)
-				d = 0.1;
-			total_distance += d;
+			total_distance += MAX(0.1, listener->transform.get_origin().distance_to(source->transform.get_origin()));
 		}
 
 		//compute spatialization variables, weighted according to distance
@@ -831,7 +849,7 @@ void SpatialSound2DServerSW::update(float p_delta) {
 			Vector2 rel_vector = -listener->transform.xform_inv(source->transform.get_origin());
 			//Vector2 source_rel_vector = source->transform.xform_inv(listener->transform.get_origin()).normalized();
 			float distance = rel_vector.length();
-			float weight = distance / total_distance;
+			float weight = MAX(0.1, distance) / total_distance;
 			float pscale = 1.0;
 
 			float distance_scale = listener->params[LISTENER_PARAM_ATTENUATION_SCALE] * room->params[ROOM_PARAM_ATTENUATION_SCALE];

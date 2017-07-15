@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -363,10 +364,6 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	press_a_key->add_child(l);
 	press_a_key->connect("input_event", this, "_wait_for_key");
 	press_a_key->connect("confirmed", this, "_press_a_key_confirm");
-	//Button *load = memnew( Button );
-
-	//load->set_text("Load..");
-	//hbc->add_child(load);
 
 	//get_ok()->set_text("Apply");
 	set_hide_on_ok(true);

@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -226,7 +227,14 @@ void Area::_clear_monitoring() {
 
 			Object *obj = ObjectDB::get_instance(E->key());
 			Node *node = obj ? obj->cast_to<Node>() : NULL;
-			ERR_CONTINUE(!node);
+
+			if (!node) //node may have been deleted in previous frame or at other legiminate point
+				continue;
+			//ERR_CONTINUE(!node);
+
+			node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_body_enter_tree);
+			node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_body_exit_tree);
+
 			if (!E->get().in_tree)
 				continue;
 
@@ -236,9 +244,6 @@ void Area::_clear_monitoring() {
 			}
 
 			emit_signal(SceneStringNames::get_singleton()->body_exit, obj);
-
-			node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_body_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_body_exit_tree);
 		}
 	}
 
@@ -252,7 +257,14 @@ void Area::_clear_monitoring() {
 
 			Object *obj = ObjectDB::get_instance(E->key());
 			Node *node = obj ? obj->cast_to<Node>() : NULL;
-			ERR_CONTINUE(!node);
+
+			if (!node) //node may have been deleted in previous frame or at other legiminate point
+				continue;
+			//ERR_CONTINUE(!node);
+
+			node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_area_enter_tree);
+			node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_area_exit_tree);
+
 			if (!E->get().in_tree)
 				continue;
 
@@ -262,16 +274,26 @@ void Area::_clear_monitoring() {
 			}
 
 			emit_signal(SceneStringNames::get_singleton()->area_exit, obj);
-
-			node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_area_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_area_exit_tree);
 		}
 	}
 }
 void Area::_notification(int p_what) {
 
-	if (p_what == NOTIFICATION_EXIT_TREE) {
-		_clear_monitoring();
+	switch (p_what) {
+
+		case NOTIFICATION_EXIT_WORLD: {
+
+			monitoring_stored = monitoring;
+			set_enable_monitoring(false);
+			_clear_monitoring();
+		} break;
+		case NOTIFICATION_ENTER_WORLD: {
+
+			if (monitoring_stored) {
+				set_enable_monitoring(true);
+				monitoring_stored = false;
+			}
+		} break;
 	}
 }
 
@@ -281,6 +303,11 @@ void Area::set_enable_monitoring(bool p_enable) {
 		ERR_EXPLAIN("This function can't be used during the in/out signal.");
 	}
 	ERR_FAIL_COND(locked);
+
+	if (!is_inside_tree()) {
+		monitoring_stored = p_enable;
+		return;
+	}
 
 	if (p_enable == monitoring)
 		return;
@@ -402,7 +429,7 @@ void Area::_area_inout(int p_status, const RID &p_area, int p_instance, int p_ar
 
 bool Area::is_monitoring_enabled() const {
 
-	return monitoring;
+	return monitoring || monitoring_stored;
 }
 
 Array Area::get_overlapping_bodies() const {
@@ -625,8 +652,10 @@ Area::Area()
 	angular_damp = 1;
 	priority = 0;
 	monitoring = false;
+	monitorable = false;
 	collision_mask = 1;
 	layer_mask = 1;
+	monitoring_stored = false;
 	set_ray_pickable(false);
 	set_enable_monitoring(true);
 	set_monitorable(true);

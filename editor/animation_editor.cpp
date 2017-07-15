@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1833,7 +1834,7 @@ void AnimationKeyEditor::_track_editor_input_event(const InputEvent &p_input) {
 				if (mb.mod.command) {
 					zoom->set_val(zoom->get_val() + zoom->get_step());
 				} else {
-					v_scroll->set_val(v_scroll->get_val() - v_scroll->get_page() / 8);
+					v_scroll->set_val(v_scroll->get_val() - v_scroll->get_page() * mb.factor / 8);
 				}
 			}
 
@@ -1842,8 +1843,17 @@ void AnimationKeyEditor::_track_editor_input_event(const InputEvent &p_input) {
 				if (mb.mod.command) {
 					zoom->set_val(zoom->get_val() - zoom->get_step());
 				} else {
-					v_scroll->set_val(v_scroll->get_val() + v_scroll->get_page() / 8);
+					v_scroll->set_val(v_scroll->get_val() + v_scroll->get_page() * mb.factor / 8);
 				}
+			}
+
+			if (mb.button_index == BUTTON_WHEEL_RIGHT && mb.pressed) {
+				h_scroll->set_val(h_scroll->get_val() - h_scroll->get_page() * mb.factor / 8);
+			}
+
+			if (mb.button_index == BUTTON_WHEEL_LEFT && mb.pressed) {
+
+				v_scroll->set_val(v_scroll->get_val() + v_scroll->get_page() * mb.factor / 8);
 			}
 
 			if (mb.button_index == BUTTON_RIGHT && mb.pressed) {

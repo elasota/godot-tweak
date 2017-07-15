@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -47,6 +48,8 @@ class TileSet : public Resource {
 		Vector2 shape_offset;
 		Rect2i region;
 		Vector<Ref<Shape2D> > shapes;
+		Vector2 one_way_collision_direction;
+		float one_way_collision_max_depth;
 		Vector2 occluder_offset;
 		Ref<OccluderPolygon2D> occluder;
 		Vector2 navigation_polygon_offset;
@@ -54,9 +57,8 @@ class TileSet : public Resource {
 		Ref<CanvasItemMaterial> material;
 		Color modulate;
 
-		// Default modulate for back-compat
 		explicit Data()
-			: modulate(1, 1, 1) {}
+			: one_way_collision_max_depth(0.0f), modulate(1, 1, 1) {}
 	};
 
 	Map<int, Data> tile_map;
@@ -112,6 +114,12 @@ public:
 
 	void tile_set_shapes(int p_id, const Vector<Ref<Shape2D> > &p_shapes);
 	Vector<Ref<Shape2D> > tile_get_shapes(int p_id) const;
+
+	void tile_set_one_way_collision_direction(int p_id, Vector2 p_direction);
+	Vector2 tile_get_one_way_collision_direction(int p_id) const;
+
+	void tile_set_one_way_collision_max_depth(int p_id, float p_max_depth);
+	float tile_get_one_way_collision_max_depth(int p_id) const;
 
 	void remove_tile(int p_id);
 

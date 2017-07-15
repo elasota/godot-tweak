@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -76,7 +77,7 @@ bool GDParser::_enter_indent_block(BlockNode *p_block) {
 
 		// be more python-like
 		int current = tab_level.back()->get();
-		tab_level.push_back(current);
+		tab_level.push_back(current + 1);
 		return true;
 		//_set_error("newline expected after ':'.");
 		//return false;
@@ -1609,15 +1610,7 @@ void GDParser::_parse_block(BlockNode *p_block, bool p_static) {
 	p_block->statements.push_back(nl);
 #endif
 
-	bool is_first_line = true;
-
 	while (true) {
-		if (!is_first_line && tab_level.back()->prev() && tab_level.back()->prev()->get() == indent_level) {
-			// pythonic single-line expression, don't parse future lines
-			tab_level.pop_back();
-			return;
-		}
-		is_first_line = false;
 
 		GDTokenizer::Token token = tokenizer->get_token();
 		if (error_set)
@@ -1753,7 +1746,7 @@ void GDParser::_parse_block(BlockNode *p_block, bool p_static) {
 				p_block->sub_blocks.push_back(cf_if->body);
 
 				if (!_enter_indent_block(cf_if->body)) {
-					_set_error("Expected intended block after 'if'");
+					_set_error("Expected indented block after 'if'");
 					p_block->end_line = tokenizer->get_token_line();
 					return;
 				}
@@ -3149,6 +3142,110 @@ void GDParser::_parse_class(ClassNode *p_class) {
 
 				if (!_end_statement()) {
 					_set_error("Expected end of statement (constant)");
+					return;
+				}
+
+			} break;
+			case GDTokenizer::TK_PR_ENUM: {
+				//mutiple constant declarations..
+
+				int last_assign = -1; // Incremented by 1 right before the assingment.
+				String enum_name;
+				Dictionary enum_dict;
+
+				tokenizer->advance();
+				if (tokenizer->get_token() == GDTokenizer::TK_IDENTIFIER) {
+					enum_name = tokenizer->get_token_identifier();
+					tokenizer->advance();
+				}
+				if (tokenizer->get_token() != GDTokenizer::TK_CURLY_BRACKET_OPEN) {
+					_set_error("Expected '{' in enum declaration");
+					return;
+				}
+				tokenizer->advance();
+
+				while (true) {
+					if (tokenizer->get_token() == GDTokenizer::TK_NEWLINE) {
+
+						tokenizer->advance(); // Ignore newlines
+					} else if (tokenizer->get_token() == GDTokenizer::TK_CURLY_BRACKET_CLOSE) {
+
+						tokenizer->advance();
+						break; // End of enum
+					} else if (tokenizer->get_token() != GDTokenizer::TK_IDENTIFIER) {
+
+						if (tokenizer->get_token() == GDTokenizer::TK_EOF) {
+							_set_error("Unexpected end of file.");
+						} else {
+							_set_error(String("Unexpected ") + GDTokenizer::get_token_name(tokenizer->get_token()) + ", expected identifier");
+						}
+
+						return;
+					} else { // tokenizer->get_token()==GDTokenizer::TK_IDENTIFIER
+						ClassNode::Constant constant;
+
+						constant.identifier = tokenizer->get_token_identifier();
+
+						tokenizer->advance();
+
+						if (tokenizer->get_token() == GDTokenizer::TK_OP_ASSIGN) {
+							tokenizer->advance();
+
+							Node *subexpr = NULL;
+
+							subexpr = _parse_and_reduce_expression(p_class, true, true);
+							if (!subexpr) {
+								if (_recover_from_completion()) {
+									break;
+								}
+								return;
+							}
+
+							if (subexpr->type != Node::TYPE_CONSTANT) {
+								_set_error("Expected constant expression");
+							}
+
+							const ConstantNode *subexpr_const = static_cast<const ConstantNode *>(subexpr);
+
+							if (subexpr_const->value.get_type() != Variant::INT) {
+								_set_error("Expected an int value for enum");
+							}
+
+							last_assign = subexpr_const->value;
+
+							constant.expression = subexpr;
+
+						} else {
+							last_assign = last_assign + 1;
+							ConstantNode *cn = alloc_node<ConstantNode>();
+							cn->value = last_assign;
+							constant.expression = cn;
+						}
+
+						if (tokenizer->get_token() == GDTokenizer::TK_COMMA) {
+							tokenizer->advance();
+						}
+
+						if (enum_name != "") {
+							const ConstantNode *cn = static_cast<const ConstantNode *>(constant.expression);
+							enum_dict[constant.identifier] = cn->value;
+						}
+
+						p_class->constant_expressions.push_back(constant);
+					}
+				}
+
+				if (enum_name != "") {
+					ClassNode::Constant enum_constant;
+					enum_constant.identifier = enum_name;
+					ConstantNode *cn = alloc_node<ConstantNode>();
+					cn->value = enum_dict;
+					enum_constant.expression = cn;
+					p_class->constant_expressions.push_back(enum_constant);
+				}
+
+				if (!_end_statement()) {
+					_set_error("Expected end of statement (enum)");
 					return;
 				}
 

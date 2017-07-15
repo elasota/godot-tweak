@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -201,6 +202,7 @@ void AnimationPlayer::_notification(int p_what) {
 			if (!get_tree()->is_editor_hint() && animation_set.has(autoplay)) {
 				play(autoplay);
 				set_autoplay(""); //this line is the fix for autoplay issues with animatio
+				_animation_process(0);
 			}
 		} break;
 		case NOTIFICATION_PROCESS: {

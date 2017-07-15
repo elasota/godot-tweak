@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,13 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "core_bind.h"
+
 #include "core/globals.h"
 #include "geometry.h"
-#include "io/base64.h"
 #include "io/file_access_encrypted.h"
 #include "io/marshalls.h"
 #include "os/keyboard.h"
 #include "os/os.h"
+
+#include "thirdparty/misc/base64.h"
 
 /**
  *  Time constants borrowed from loc_time.h

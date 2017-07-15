@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -122,6 +123,11 @@ public:
 		HAT_LEFT,
 		HAT_MAX,
 	};
+
+	enum {
+		JOYSTICKS_MAX = 16,
+	};
+
 	struct JoyAxis {
 		int min;
 		float value;
@@ -225,6 +231,8 @@ public:
 	virtual String get_joy_axis_string(int p_axis);
 	virtual int get_joy_axis_index_from_string(String p_axis);
 	virtual int get_joy_button_index_from_string(String p_button);
+
+	int get_unused_joy_id();
 
 	bool is_joy_mapped(int p_device);
 	String get_joy_guid_remapped(int p_device) const;

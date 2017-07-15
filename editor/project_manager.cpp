@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -899,8 +900,9 @@ void ProjectManager::_on_project_created(const String &dir) {
 		_update_scroll_pos(dir);
 	} else {
 		_load_recent_projects();
-		scroll->connect("draw", this, "_update_scroll_pos", varray(dir), CONNECT_ONESHOT);
+		_update_scroll_pos(dir);
 	}
+	_open_project();
 }
 
 void ProjectManager::_update_scroll_pos(const String &dir) {
@@ -1320,7 +1322,7 @@ ProjectManager::ProjectManager() {
 
 	if (StreamPeerSSL::is_available()) {
 		asset_library = memnew(EditorAssetLibrary(true));
-		asset_library->set_name("Templates");
+		asset_library->set_name(TTR("Templates"));
 		tabs->add_child(asset_library);
 		asset_library->connect("install_asset", this, "_install_project");
 	} else {
@@ -1451,7 +1453,7 @@ ProjectListFilter::ProjectListFilter() {
 	_current_filter = FILTER_NAME;
 
 	filter_option = memnew(OptionButton);
-	filter_option->set_custom_minimum_size(Size2(80, 10));
+	filter_option->set_custom_minimum_size(Size2(80 * EDSCALE, 10 * EDSCALE));
 	filter_option->set_clip_text(true);
 	filter_option->connect("item_selected", this, "_filter_option_selected");
 	add_child(filter_option);

@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -42,6 +43,8 @@ private:
 	String dump_node_code(ShaderLanguage::Node *p_node, int p_level, bool p_assign_left = false);
 	Error compile_node(ShaderLanguage::ProgramNode *p_program);
 	static Error create_glsl_120_code(void *p_str, ShaderLanguage::ProgramNode *p_program);
+
+	bool _is_condition_preprocessable(ShaderLanguage::Node *p_condition) const;
 
 	bool uses_light;
 	bool uses_texscreen;

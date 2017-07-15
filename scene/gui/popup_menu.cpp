@@ -6,6 +6,7 @@
 /*                    http://www.godotengine.org                         */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -103,6 +104,11 @@ Size2 PopupMenu::get_minimum_size() const {
 			int accel_w = hseparation * 2;
 			accel_w += font->get_string_size(_get_accel_text(i)).width;
 			accel_max_w = MAX(accel_w, accel_max_w);
+		}
+
+		if (items[i].submenu != "") {
+
+			size.width += get_icon("submenu")->get_width();
 		}
 
 		minsize.height += size.height;
@@ -270,7 +276,7 @@ void PopupMenu::_input_event(const InputEvent &p_event) {
 
 						Point2 pos = get_pos();
 						int s = (vseparation + font->get_height()) * 3;
-						pos.y -= s;
+						pos.y -= (s * b.factor);
 						set_pos(pos);
 
 						//update hover
@@ -290,7 +296,7 @@ void PopupMenu::_input_event(const InputEvent &p_event) {
 
 						Point2 pos = get_pos();
 						int s = (vseparation + font->get_height()) * 3;
-						pos.y += s;
+						pos.y += (s * b.factor);
 						set_pos(pos);
 
 						//update hover
