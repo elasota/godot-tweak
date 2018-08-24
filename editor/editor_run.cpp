@@ -175,6 +175,10 @@ Error EditorRun::run(const String &p_scene, const String p_custom_args, const Li
 		}
 	}
 
+	if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
+		args.push_back("--attach-native-debugger");
+	}
+
 	String exec = OS::get_singleton()->get_executable_path();
 
 	printf("Running: %ls", exec.c_str());

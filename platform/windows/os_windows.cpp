@@ -55,6 +55,12 @@
 #include <regstr.h>
 #include <shlobj.h>
 
+#pragma optimize("",off)
+
+#if defined(_MSC_VER) && defined(TOOLS_ENABLED)
+#import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" raw_interfaces_only named_guids
+#endif
+
 static const WORD MAX_CONSOLE_LINES = 1500;
 
 extern "C" {
@@ -217,7 +223,24 @@ void OS_Windows::initialize_debugging() {
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
 }
 
-void OS_Windows::initialize_core() {
+void OS_Windows::initialize_core(int argc, char *argv[]) {
+
+	CoInitialize(NULL);
+
+#ifdef TOOLS_ENABLED
+	for (int i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "--vs-debugger-handoff") && i != argc - 1) {
+			attach_debugger(get_process_id());
+
+			HANDLE evt_handle = OpenEventA(EVENT_MODIFY_STATE, FALSE, argv[i + 1]);
+			if (evt_handle != INVALID_HANDLE_VALUE) {
+				SetEvent(evt_handle);
+				CloseHandle(evt_handle);
+			}
+			break;
+		}
+	}
+#endif
 
 	crash_handler.initialize();
 
@@ -1506,6 +1529,8 @@ void OS_Windows::finalize_core() {
 
 	TCPServerWinsock::cleanup();
 	StreamPeerTCPWinsock::cleanup();
+
+	CoUninitialize();
 }
 
 void OS_Windows::alert(const String &p_alert, const String &p_title) {
@@ -2368,7 +2393,11 @@ void OS_Windows::GetMaskBitmaps(HBITMAP hSourceBitmap, COLORREF clrTransparent, 
 	DeleteDC(hMainDC);
 }
 
-Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+
+#ifndef TOOLS_ENABLED
+	p_reattach_debugger = false;
+#endif
 
 	if (p_blocking && r_pipe) {
 
@@ -2412,12 +2441,55 @@ Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments,
 	ZeroMemory(&pi.pi, sizeof(pi.pi));
 	LPSTARTUPINFOW si_w = (LPSTARTUPINFOW)&pi.si;
 
+#if defined(_MSC_VER) && defined(TOOLS_ENABLED)
+	HANDLE event_handle = NULL;
+
+	if (p_reattach_debugger) {
+		// We can't call CreateProcess with CREATE_SUSPENDED and then ResumeThread after attaching, because that will trip
+		//     some breakpoints in the OS loader.  (VS bug?)
+		// We can't tell VS to launch the process and attach to it because there's no API for it.
+		// We can't just make the launched process attach, because if it tries to attach while the IDE is transitioning
+		//     out of debug mode (i.e. because this process exited), it will fail.
+		// We can't try to do that and attach here, because double-attach through the DTE API breaks the debugger.
+		//
+		// So, what we do is create an event, pass it to the child process, and wait for either the process to exit
+		// or the event to fire, then continue.
+
+		String event_name = String("GodotHandoffEvent_") + itos(Math::rand()) + "_" + itos(GetProcessId(GetCurrentProcess()));
+		event_handle = CreateEventA(NULL, TRUE, FALSE, event_name.ascii().get_data());
+
+		if (event_handle == NULL) {
+			p_reattach_debugger = false;
+		} else {
+			cmdline += " --vs-debugger-handoff ";
+			cmdline += event_name;
+		}
+	}
+#endif
+
 	Vector<CharType> modstr; //windows wants to change this no idea why
 	modstr.resize(cmdline.size());
 	for (int i = 0; i < cmdline.size(); i++)
 		modstr.write[i] = cmdline[i];
+
 	int ret = CreateProcessW(NULL, modstr.ptrw(), NULL, NULL, 0, NORMAL_PRIORITY_CLASS, NULL, NULL, si_w, &pi.pi);
+
+#if defined(_MSC_VER) && defined(TOOLS_ENABLED)
+	if (ret == 0 && p_reattach_debugger) {
+		CloseHandle(event_handle);
+	}
+#endif
+	
 	ERR_FAIL_COND_V(ret == 0, ERR_CANT_FORK);
+
+#if defined(_MSC_VER) && defined(TOOLS_ENABLED)
+	if (p_reattach_debugger) {
+		HANDLE handles[2] = { pi.pi.hProcess, event_handle };
+		WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+
+		CloseHandle(event_handle);
+	}
+#endif
 
 	if (p_blocking) {
 
@@ -2436,7 +2508,11 @@ Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments,
 		process_map->insert(pid, pi);
 	};
 	return OK;
-};
+}
+
+Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+	return execute_reattach(p_path, p_arguments, p_blocking, false, r_child_id, r_pipe, r_exitcode, read_stderr);
+}
 
 Error OS_Windows::kill(const ProcessID &p_pid, const int p_max_wait_msec) {
 	ERR_FAIL_COND_V(!process_map->has(p_pid), FAILED);
@@ -2934,6 +3010,67 @@ Error OS_Windows::move_to_trash(const String &p_path) {
 	}
 
 	return OK;
+}
+
+
+bool OS_Windows::is_debugger_attached() const {
+	return IsDebuggerPresent();
+}
+
+Error OS_Windows::attach_debugger(const ProcessID &p_process_id) const {
+#if defined(_MSC_VER) && defined(TOOLS_ENABLED)
+	CLSID clsid_dte = GUID_NULL;
+	CLSIDFromProgID(L"VisualStudio.DTE", &clsid_dte);
+
+	IUnknownPtr p_dte_unknown;
+	GetActiveObject(clsid_dte, NULL, &p_dte_unknown);
+
+	if (p_dte_unknown == NULL)
+		return ERR_UNAVAILABLE;
+
+	EnvDTE::_DTEPtr p_dte = p_dte_unknown;
+	if (!p_dte)
+		return ERR_UNAVAILABLE;
+
+	EnvDTE::DebuggerPtr p_debugger;
+	if (!SUCCEEDED(p_dte->get_Debugger(&p_debugger)) || p_debugger == NULL)
+		return ERR_UNAVAILABLE;
+
+	EnvDTE::ProcessesPtr p_local_processes;
+	if (!SUCCEEDED(p_debugger->get_LocalProcesses(&p_local_processes)) || p_local_processes == NULL)
+		return ERR_UNAVAILABLE;
+
+	long local_process_count;
+	if (!SUCCEEDED(p_local_processes->get_Count(&local_process_count)))
+		return ERR_UNAVAILABLE;
+
+	VARIANT index;
+	VariantInit(&index);
+	index.vt = VT_INT;
+
+	for (long i = 0; i < local_process_count; i++) {
+		EnvDTE::ProcessPtr p_process;
+
+		index.intVal = static_cast<int>(i + 1);
+		if (!SUCCEEDED(p_local_processes->Item(index, &p_process)))
+			continue;
+
+		long pid;
+		if (!SUCCEEDED(p_process->get_ProcessID(&pid)))
+			continue;
+
+		if (static_cast<ProcessID>(pid) == p_process_id) {
+			if (SUCCEEDED(p_process->Attach()))
+				return OK;
+			else
+				return ERR_UNAVAILABLE;
+		}
+	}
+
+	return ERR_UNAVAILABLE;
+#else
+	return ERR_UNAVAILABLE;
+#endif
 }
 
 OS_Windows::OS_Windows(HINSTANCE _hInstance) {

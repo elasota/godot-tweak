@@ -77,11 +77,11 @@
 
 #include <X11/XKBlib.h>
 
-void OS_X11::initialize_core() {
+void OS_X11::initialize_core(int argc, char *argv[]) {
 
 	crash_handler.initialize();
 
-	OS_Unix::initialize_core();
+	OS_Unix::initialize_core(argc, argv);
 }
 
 int OS_X11::get_current_video_driver() const {

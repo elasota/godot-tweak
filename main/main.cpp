@@ -288,7 +288,7 @@ void Main::print_help(const char *p_binary) {
 Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_phase) {
 	RID_OwnerBase::init_rid();
 
-	OS::get_singleton()->initialize_core();
+	OS::get_singleton()->initialize_core(argc, argv);
 
 	engine = memnew(Engine);
 
@@ -675,6 +675,11 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			print_fps = true;
 		} else if (I->get() == "--disable-crash-handler") {
 			OS::get_singleton()->disable_crash_handler();
+		} else if (I->get() == "--vs-debugger-handoff") {
+			// Ignore
+			if (I->next()) {
+				N = I->next()->next();
+			}
 		} else {
 			main_args.push_back(I->get());
 		}

@@ -161,7 +161,7 @@ class OS_Windows : public OS {
 protected:
 	virtual int get_current_video_driver() const;
 
-	virtual void initialize_core();
+	virtual void initialize_core(int argc, char *argv[]);
 	virtual Error initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
 
 	virtual void set_main_loop(MainLoop *p_main_loop);
@@ -259,6 +259,7 @@ public:
 	virtual uint64_t get_ticks_usec() const;
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false);
+	virtual Error execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false);
 	virtual Error kill(const ProcessID &p_pid, const int p_stop_max_wait_msec = -1);
 	virtual int get_process_id() const;
 
@@ -326,6 +327,9 @@ public:
 	void force_process_input();
 
 	virtual Error move_to_trash(const String &p_path);
+
+	virtual bool is_debugger_attached() const;
+	virtual Error attach_debugger(const ProcessID &p_process_id) const;
 
 	OS_Windows(HINSTANCE _hInstance);
 	~OS_Windows();

@@ -1403,10 +1403,12 @@ void ProjectManager::_open_project_confirm() {
 			args.push_back("--disable-crash-handler");
 		}
 
+		bool reattach = (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger"));
+
 		String exec = OS::get_singleton()->get_executable_path();
 
 		OS::ProcessID pid = 0;
-		Error err = OS::get_singleton()->execute(exec, args, false, &pid);
+		Error err = OS::get_singleton()->execute_reattach(exec, args, false, reattach, &pid);
 		ERR_FAIL_COND(err);
 	}
 
@@ -1456,6 +1458,10 @@ void ProjectManager::_run_project_confirm() {
 
 		if (OS::get_singleton()->is_disable_crash_handler()) {
 			args.push_back("--disable-crash-handler");
+		}
+
+		if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
+			args.push_back("--attach-native-debugger");
 		}
 
 		String exec = OS::get_singleton()->get_executable_path();
@@ -1599,6 +1605,11 @@ void ProjectManager::_language_selected(int p_id) {
 void ProjectManager::_restart_confirm() {
 
 	List<String> args = OS::get_singleton()->get_cmdline_args();
+
+	if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
+		args.push_back("--attach-native-debugger");
+	}
+
 	String exec = OS::get_singleton()->get_executable_path();
 	OS::ProcessID pid = 0;
 	Error err = OS::get_singleton()->execute(exec, args, false, &pid);

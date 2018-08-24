@@ -1106,6 +1106,10 @@ void EditorNode::save_all_scenes_and_restart() {
 		args.push_back(to_reopen);
 	}
 
+	if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
+		args.push_back("--attach-native-debugger");
+	}
+
 	OS::get_singleton()->set_restart_on_exit(true, args);
 }
 
@@ -2359,6 +2363,10 @@ void EditorNode::_discard_changes(const String &p_str) {
 			args.push_back("--path");
 			args.push_back(exec.get_base_dir());
 			args.push_back("--project-manager");
+
+			if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
+				args.push_back("--attach-native-debugger");
+			}
 
 			OS::ProcessID pid = 0;
 			Error err = OS::get_singleton()->execute(exec, args, false, &pid);

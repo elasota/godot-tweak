@@ -131,7 +131,7 @@ protected:
 	// functions used by main to initialize/deintialize the OS
 	void add_logger(Logger *p_logger);
 
-	virtual void initialize_core() = 0;
+	virtual void initialize_core(int argc, char *argv[]) = 0;
 	virtual Error initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) = 0;
 
 	virtual void set_main_loop(MainLoop *p_main_loop) = 0;
@@ -254,6 +254,7 @@ public:
 
 	virtual String get_executable_path() const;
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) = 0;
+	virtual Error execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) = 0;
 	virtual Error kill(const ProcessID &p_pid, const int p_max_wait_msec = -1) = 0;
 	virtual int get_process_id() const;
 
@@ -410,6 +411,9 @@ public:
 	virtual String get_system_dir(SystemDir p_dir) const;
 
 	virtual Error move_to_trash(const String &p_path) { return FAILED; }
+
+	virtual bool is_debugger_attached() const { return false; }
+	virtual Error attach_debugger(const ProcessID &p_process_id) const { return ERR_UNAVAILABLE; }
 
 	virtual void set_no_window_mode(bool p_enable);
 	virtual bool is_no_window_mode_enabled() const;
