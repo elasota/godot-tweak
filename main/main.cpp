@@ -680,6 +680,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			if (I->next()) {
 				N = I->next()->next();
 			}
+		} else if (I->get() == "--attach-native-debugger") {
+			OS::get_singleton()->attach_debugger(OS::get_singleton()->get_process_id());
 		} else {
 			main_args.push_back(I->get());
 		}
@@ -1965,11 +1967,12 @@ void Main::cleanup() {
 
 	if (OS::get_singleton()->is_restart_on_exit_set()) {
 		//attempt to restart with arguments
+		bool reattach = OS::get_singleton()->is_attach_debugger_to_restarted_process_set();
 		String exec = OS::get_singleton()->get_executable_path();
 		List<String> args = OS::get_singleton()->get_restart_on_exit_arguments();
 		OS::ProcessID pid = 0;
-		OS::get_singleton()->execute(exec, args, false, &pid);
-		OS::get_singleton()->set_restart_on_exit(false, List<String>()); //clear list (uses memory)
+		OS::get_singleton()->execute_debug(exec, args, false, reattach ? OS::EXECUTE_DEBUG_TYPE_HANDOFF : OS::EXECUTE_DEBUG_TYPE_NONE, &pid);
+		OS::get_singleton()->set_restart_on_exit(false, false, List<String>()); //clear list (uses memory)
 	}
 
 	unregister_core_driver_types();

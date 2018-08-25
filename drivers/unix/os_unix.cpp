@@ -329,7 +329,7 @@ Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bo
 	return OK;
 }
 
-virtual Error execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+virtual Error execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, ExecuteDebugType p_execute_debug_type, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
 	execute(p_path, p_arguments, p_blocking, r_child_id, r_pipe, r_exitcode, read_stderr);
 }
 

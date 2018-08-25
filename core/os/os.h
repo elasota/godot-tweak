@@ -75,6 +75,7 @@ class OS {
 	CompositeLogger *_logger;
 
 	bool restart_on_exit;
+	bool attach_debugger_to_restarted_process;
 	List<String> restart_commandline;
 
 protected:
@@ -97,6 +98,13 @@ public:
 		RENDER_THREAD_SAFE,
 		RENDER_SEPARATE_THREAD
 	};
+
+	enum ExecuteDebugType {
+		EXECUTE_DEBUG_TYPE_NONE,	// Don't attach a debugger
+		EXECUTE_DEBUG_TYPE_START,	// Attach debugger to executed process (only valid for other Godot instances)
+		EXECUTE_DEBUG_TYPE_HANDOFF,	// Attach debugger to executed process, wait for attachment (only valid for other Godot instances, use this if the current process will exit)
+	};
+
 	struct VideoMode {
 
 		int width, height;
@@ -254,7 +262,7 @@ public:
 
 	virtual String get_executable_path() const;
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) = 0;
-	virtual Error execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) = 0;
+	virtual Error execute_debug(const String &p_path, const List<String> &p_arguments, bool p_blocking, ExecuteDebugType p_execute_debug_type, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) = 0;
 	virtual Error kill(const ProcessID &p_pid, const int p_max_wait_msec = -1) = 0;
 	virtual int get_process_id() const;
 
@@ -506,8 +514,9 @@ public:
 	bool is_layered_allowed() const { return _allow_layered; }
 	bool is_hidpi_allowed() const { return _allow_hidpi; }
 
-	void set_restart_on_exit(bool p_restart, const List<String> &p_restart_arguments);
+	void set_restart_on_exit(bool p_restart, bool p_attach_debugger, const List<String> &p_restart_arguments);
 	bool is_restart_on_exit_set() const;
+	bool is_attach_debugger_to_restarted_process_set() const;
 	List<String> get_restart_on_exit_arguments() const;
 
 	OS();

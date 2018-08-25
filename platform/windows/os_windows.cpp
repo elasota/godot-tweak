@@ -2393,10 +2393,10 @@ void OS_Windows::GetMaskBitmaps(HBITMAP hSourceBitmap, COLORREF clrTransparent, 
 	DeleteDC(hMainDC);
 }
 
-Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_arguments, bool p_blocking, bool p_reattach_debugger, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
+Error OS_Windows::execute_debug(const String &p_path, const List<String> &p_arguments, bool p_blocking, ExecuteDebugType p_execute_debug_type, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
 
 #ifndef TOOLS_ENABLED
-	p_reattach_debugger = false;
+	p_execute_debug_type = EXECUTE_DEBUG_TYPE_NONE;
 #endif
 
 	if (p_blocking && r_pipe) {
@@ -2444,7 +2444,7 @@ Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_a
 #if defined(_MSC_VER) && defined(TOOLS_ENABLED)
 	HANDLE event_handle = NULL;
 
-	if (p_reattach_debugger) {
+	if (p_execute_debug_type == EXECUTE_DEBUG_TYPE_HANDOFF) {
 		// We can't call CreateProcess with CREATE_SUSPENDED and then ResumeThread after attaching, because that will trip
 		//     some breakpoints in the OS loader.  (VS bug?)
 		// We can't tell VS to launch the process and attach to it because there's no API for it.
@@ -2459,11 +2459,13 @@ Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_a
 		event_handle = CreateEventA(NULL, TRUE, FALSE, event_name.ascii().get_data());
 
 		if (event_handle == NULL) {
-			p_reattach_debugger = false;
+			p_execute_debug_type = EXECUTE_DEBUG_TYPE_NONE;
 		} else {
 			cmdline += " --vs-debugger-handoff ";
 			cmdline += event_name;
 		}
+	} else if (p_execute_debug_type == EXECUTE_DEBUG_TYPE_START) {
+		cmdline += " --attach-native-debugger";
 	}
 #endif
 
@@ -2475,7 +2477,7 @@ Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_a
 	int ret = CreateProcessW(NULL, modstr.ptrw(), NULL, NULL, 0, NORMAL_PRIORITY_CLASS, NULL, NULL, si_w, &pi.pi);
 
 #if defined(_MSC_VER) && defined(TOOLS_ENABLED)
-	if (ret == 0 && p_reattach_debugger) {
+	if (ret == 0 && p_execute_debug_type == EXECUTE_DEBUG_TYPE_HANDOFF) {
 		CloseHandle(event_handle);
 	}
 #endif
@@ -2483,7 +2485,7 @@ Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_a
 	ERR_FAIL_COND_V(ret == 0, ERR_CANT_FORK);
 
 #if defined(_MSC_VER) && defined(TOOLS_ENABLED)
-	if (p_reattach_debugger) {
+	if (p_execute_debug_type == EXECUTE_DEBUG_TYPE_HANDOFF) {
 		HANDLE handles[2] = { pi.pi.hProcess, event_handle };
 		WaitForMultipleObjects(2, handles, FALSE, INFINITE);
 
@@ -2511,7 +2513,7 @@ Error OS_Windows::execute_reattach(const String &p_path, const List<String> &p_a
 }
 
 Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
-	return execute_reattach(p_path, p_arguments, p_blocking, false, r_child_id, r_pipe, r_exitcode, read_stderr);
+	return execute_debug(p_path, p_arguments, p_blocking, EXECUTE_DEBUG_TYPE_NONE, r_child_id, r_pipe, r_exitcode, read_stderr);
 }
 
 Error OS_Windows::kill(const ProcessID &p_pid, const int p_max_wait_msec) {

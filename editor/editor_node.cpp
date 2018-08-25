@@ -1106,11 +1106,9 @@ void EditorNode::save_all_scenes_and_restart() {
 		args.push_back(to_reopen);
 	}
 
-	if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
-		args.push_back("--attach-native-debugger");
-	}
+	bool reattach = (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger"));
 
-	OS::get_singleton()->set_restart_on_exit(true, args);
+	OS::get_singleton()->set_restart_on_exit(true, reattach, args);
 }
 
 void EditorNode::_save_all_scenes() {
@@ -2364,12 +2362,10 @@ void EditorNode::_discard_changes(const String &p_str) {
 			args.push_back(exec.get_base_dir());
 			args.push_back("--project-manager");
 
-			if (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger")) {
-				args.push_back("--attach-native-debugger");
-			}
+			bool reattach = (OS::get_singleton()->is_debugger_attached() && EditorSettings::get_singleton()->get("debugger/reattach_native_debugger"));
 
 			OS::ProcessID pid = 0;
-			Error err = OS::get_singleton()->execute(exec, args, false, &pid);
+			Error err = OS::get_singleton()->execute_debug(exec, args, false, reattach ? OS::EXECUTE_DEBUG_TYPE_HANDOFF : OS::EXECUTE_DEBUG_TYPE_NONE, &pid);
 			ERR_FAIL_COND(err);
 		} break;
 	}

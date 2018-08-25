@@ -667,13 +667,18 @@ const char *OS::get_audio_driver_name(int p_driver) const {
 	return AudioDriverManager::get_driver(p_driver)->get_name();
 }
 
-void OS::set_restart_on_exit(bool p_restart, const List<String> &p_restart_arguments) {
+void OS::set_restart_on_exit(bool p_restart, bool p_attach_debugger, const List<String> &p_restart_arguments) {
 	restart_on_exit = p_restart;
 	restart_commandline = p_restart_arguments;
+	attach_debugger_to_restarted_process = p_attach_debugger;
 }
 
 bool OS::is_restart_on_exit_set() const {
 	return restart_on_exit;
+}
+
+bool OS::is_attach_debugger_to_restarted_process_set() const {
+	return attach_debugger_to_restarted_process;
 }
 
 List<String> OS::get_restart_on_exit_arguments() const {
@@ -693,6 +698,7 @@ OS::OS() {
 	void *volatile stack_bottom;
 
 	restart_on_exit = false;
+	attach_debugger_to_restarted_process = false;
 	last_error = NULL;
 	singleton = this;
 	_keep_screen_on = true; // set default value to true, because this had been true before godot 2.0.

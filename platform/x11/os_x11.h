@@ -203,7 +203,7 @@ class OS_X11 : public OS_Unix {
 protected:
 	virtual int get_current_video_driver() const;
 
-	virtual void initialize_core();
+	virtual void initialize_core(int argc, char *argv[]);
 	virtual Error initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
 	virtual void finalize();
 
