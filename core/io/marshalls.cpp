@@ -53,14 +53,27 @@ ObjectID EncodedObjectAsID::get_object_id() const {
 	return id;
 }
 
+#ifdef TOOLS_ENABLED
+void EncodedObjectAsID::set_debug_class_name(const String &p_class_name) {
+
+	debug_class_name = p_class_name;
+}
+
+const String &EncodedObjectAsID::get_debug_class_name() const {
+
+	return debug_class_name;
+}
+#endif
+
 EncodedObjectAsID::EncodedObjectAsID() {
 
 	id = 0;
 }
 
 #define ENCODE_MASK 0xFF
-#define ENCODE_FLAG_64 1 << 16
-#define ENCODE_FLAG_OBJECT_AS_ID 1 << 16
+#define ENCODE_FLAG_64 (1 << 16)
+#define ENCODE_FLAG_OBJECT_AS_ID (1 << 16)
+#define ENCODE_FLAG_OBJECT_DEBUG_INFO (1 << 17)
 
 static Error _decode_string(const uint8_t *&buf, int &len, int *r_len, String &r_string) {
 	ERR_FAIL_COND_V(len < 4, ERR_INVALID_DATA);
@@ -395,12 +408,28 @@ Error decode_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int
 				if (r_len)
 					(*r_len) += 8;
 
+				buf += 8;
+
 				if (val == 0) {
 					r_variant = (Object *)NULL;
 				} else {
+
 					Ref<EncodedObjectAsID> obj_as_id;
 					obj_as_id.instance();
 					obj_as_id->set_object_id(val);
+
+					if (val != 0 && (type & ENCODE_FLAG_OBJECT_DEBUG_INFO)) {
+
+						String class_name;
+
+						Error err = _decode_string(buf, len, r_len, class_name);
+						if (err)
+							return err;
+
+#ifdef TOOLS_ENABLED
+						obj_as_id->set_debug_class_name(class_name);
+#endif
+					}
 
 					r_variant = obj_as_id;
 				}
@@ -793,7 +822,7 @@ static void _encode_string(const String &p_string, uint8_t *&buf, int &r_len) {
 	}
 }
 
-Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bool p_object_as_id) {
+Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bool p_object_as_id, bool p_include_debug_info) {
 
 	uint8_t *buf = r_buffer;
 
@@ -820,6 +849,9 @@ Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bo
 		case Variant::OBJECT: {
 			if (p_object_as_id) {
 				flags |= ENCODE_FLAG_OBJECT_AS_ID;
+			}
+			if (p_include_debug_info) {
+				flags |= ENCODE_FLAG_OBJECT_DEBUG_INFO;
 			}
 		} break;
 	}
@@ -1089,18 +1121,23 @@ Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bo
 
 			if (p_object_as_id) {
 
+				Object *obj = p_variant;
+				ObjectID id = 0;
+				if (obj && ObjectDB::instance_validate(obj)) {
+					id = obj->get_instance_id();
+				}
+
 				if (buf) {
 
-					Object *obj = p_variant;
-					ObjectID id = 0;
-					if (obj && ObjectDB::instance_validate(obj)) {
-						id = obj->get_instance_id();
-					}
-
 					encode_uint64(id, buf);
+					buf += 8;
 				}
 
 				r_len += 8;
+
+				if (id && p_include_debug_info) {
+					_encode_string(obj->get_class_name(), buf, r_len);
+				}
 
 			} else {
 				Object *obj = p_variant;
@@ -1140,7 +1177,7 @@ Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bo
 						_encode_string(E->get().name, buf, r_len);
 
 						int len;
-						Error err = encode_variant(obj->get(E->get().name), buf, len, p_object_as_id);
+						Error err = encode_variant(obj->get(E->get().name), buf, len, p_object_as_id, p_include_debug_info);
 						if (err)
 							return err;
 						ERR_FAIL_COND_V(len % 4, ERR_BUG);
@@ -1181,14 +1218,14 @@ Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bo
 					r_len++; //pad
 				*/
 				int len;
-				encode_variant(E->get(), buf, len, p_object_as_id);
+				encode_variant(E->get(), buf, len, p_object_as_id, p_include_debug_info);
 				ERR_FAIL_COND_V(len % 4, ERR_BUG);
 				r_len += len;
 				if (buf)
 					buf += len;
 				Variant *v = d.getptr(E->get());
 				ERR_FAIL_COND_V(!v, ERR_BUG);
-				encode_variant(*v, buf, len, p_object_as_id);
+				encode_variant(*v, buf, len, p_object_as_id, p_include_debug_info);
 				ERR_FAIL_COND_V(len % 4, ERR_BUG);
 				r_len += len;
 				if (buf)
@@ -1210,7 +1247,7 @@ Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bo
 			for (int i = 0; i < v.size(); i++) {
 
 				int len;
-				encode_variant(v.get(i), buf, len, p_object_as_id);
+				encode_variant(v.get(i), buf, len, p_object_as_id, p_include_debug_info);
 				ERR_FAIL_COND_V(len % 4, ERR_BUG);
 				r_len += len;
 				if (buf)

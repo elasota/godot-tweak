@@ -37,6 +37,7 @@
 PacketPeer::PacketPeer() {
 
 	allow_object_decoding = false;
+	include_debug_info = false;
 	last_get_error = OK;
 }
 
@@ -48,6 +49,16 @@ void PacketPeer::set_allow_object_decoding(bool p_enable) {
 bool PacketPeer::is_object_decoding_allowed() const {
 
 	return allow_object_decoding;
+}
+
+void PacketPeer::set_include_debug_info(bool p_enable) {
+
+	include_debug_info = p_enable;
+}
+
+bool PacketPeer::is_debug_info_included() const {
+
+	return include_debug_info;
 }
 
 Error PacketPeer::get_packet_buffer(PoolVector<uint8_t> &r_buffer) {
@@ -93,7 +104,7 @@ Error PacketPeer::get_var(Variant &r_variant) {
 Error PacketPeer::put_var(const Variant &p_packet) {
 
 	int len;
-	Error err = encode_variant(p_packet, NULL, len, !allow_object_decoding); // compute len first
+	Error err = encode_variant(p_packet, NULL, len, !allow_object_decoding, include_debug_info); // compute len first
 	if (err)
 		return err;
 
@@ -102,7 +113,7 @@ Error PacketPeer::put_var(const Variant &p_packet) {
 
 	uint8_t *buf = (uint8_t *)alloca(len);
 	ERR_FAIL_COND_V(!buf, ERR_OUT_OF_MEMORY);
-	err = encode_variant(p_packet, buf, len, !allow_object_decoding);
+	err = encode_variant(p_packet, buf, len, !allow_object_decoding, include_debug_info);
 	ERR_FAIL_COND_V(err, err);
 
 	return put_packet(buf, len);

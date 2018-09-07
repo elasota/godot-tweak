@@ -189,6 +189,10 @@ class EncodedObjectAsID : public Reference {
 
 	ObjectID id;
 
+#ifdef TOOLS_ENABLED
+	String debug_class_name;
+#endif
+
 protected:
 	static void _bind_methods();
 
@@ -196,10 +200,15 @@ public:
 	void set_object_id(ObjectID p_id);
 	ObjectID get_object_id() const;
 
+#ifdef TOOLS_ENABLED
+	void set_debug_class_name(const String &p_class_name);
+	const String &get_debug_class_name() const;
+#endif
+
 	EncodedObjectAsID();
 };
 
 Error decode_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len = NULL, bool p_allow_objects = true);
-Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bool p_object_as_id = false);
+Error encode_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bool p_object_as_id = false, bool p_include_debug_info = false);
 
 #endif

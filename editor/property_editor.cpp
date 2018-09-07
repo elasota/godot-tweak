@@ -2352,7 +2352,11 @@ void PropertyEditor::set_item_text(TreeItem *p_item, int p_type, const String &p
 
 			if (encoded.is_valid()) {
 
-				p_item->set_text(1, "Object: " + itos(encoded->get_object_id()));
+				if (!encoded->get_debug_class_name().empty()) {
+					p_item->set_text(1, "Object: " + itos(encoded->get_object_id()));
+				} else {
+					p_item->set_text(1, encoded->get_debug_class_name() + ": " + itos(encoded->get_object_id()));
+				}
 				p_item->set_icon(1, Ref<Texture>());
 				p_item->set_custom_as_button(1, true);
 
@@ -3537,8 +3541,11 @@ void PropertyEditor::update_tree() {
 				Ref<EncodedObjectAsID> encoded = obj->get(p.name); //for debugger and remote tools
 
 				if (encoded.is_valid()) {
-
-					item->set_text(1, "Object: " + itos(encoded->get_object_id()));
+					if (encoded->get_debug_class_name().empty()) {
+						item->set_text(1, "Object: " + itos(encoded->get_object_id()));
+					} else {
+						item->set_text(1, encoded->get_debug_class_name() + ": " + itos(encoded->get_object_id()));
+					}
 					item->set_icon(1, Ref<Texture>());
 					item->set_custom_as_button(1, true);
 					item->set_editable(1, true);

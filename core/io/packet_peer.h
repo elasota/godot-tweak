@@ -50,6 +50,7 @@ class PacketPeer : public Reference {
 	mutable Error last_get_error;
 
 	bool allow_object_decoding;
+	bool include_debug_info;
 
 public:
 	virtual int get_available_packet_count() const = 0;
@@ -68,6 +69,9 @@ public:
 
 	void set_allow_object_decoding(bool p_enable);
 	bool is_object_decoding_allowed() const;
+
+	void set_include_debug_info(bool p_enable);
+	bool is_debug_info_included() const;
 
 	PacketPeer();
 	~PacketPeer() {}
